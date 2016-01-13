@@ -40,7 +40,8 @@ def normalize_angle(angle):
     return angle
 
 def calculate_target_offsets(plate, mjd, guide_wlen=5400*u.Angstrom, std_wlen=5400.*u.Angstrom,
-                             offset_wlen=4000*u.Angstrom, steps_per_exposure=5, wlen_grid_steps=15):
+                             offset_wlen=4000*u.Angstrom, steps_per_exposure=5, wlen_grid_steps=15, 
+                             save_guide_plots=False):
     print 'Calculating corrections for {} observed on MJD {}'.format(plate, mjd)
     
     finder = bossdata.path.Finder()
@@ -167,7 +168,7 @@ def calculate_target_offsets(plate, mjd, guide_wlen=5400*u.Angstrom, std_wlen=54
         guider = Guider(guide_x0, guide_y0, guide_x, guide_y)
         guider.plot(tai_steps, field_radius=340 * u.mm, zoom=5000.,
                     fiber_radius=0.1 * u.arcsec * pointing.platescale,
-                    save='guide-{}-{}-{}.png'.format(plate, mjd, exp_index))
+                    save='guide-{}-{}-{}.png'.format(plate, mjd, exp_index) if save_guide_plots else None)
         plt.close()
 
         # Calculate the offset target paths on the focal plane without any guiding, for the
@@ -249,6 +250,8 @@ def main():
         help='output filename')
     parser.add_argument('--wlen-grid-steps', type=int, default=15,
         help='Number of wlen grid steps to use for correction calculation (between 3500-10500 incl.)')
+    parser.add_argument('--save-guide-plots', action='store_true',
+        help='Save per exposure guide plots.')
     args = parser.parse_args()
 
     finder = bossdata.path.Finder()
@@ -275,7 +278,8 @@ def main():
     outfile = h5py.File(filename, 'w')
 
     # Calculate offsets for individual exposures
-    offsets = calculate_target_offsets(args.plate, args.mjd, wlen_grid_steps=args.wlen_grid_steps)
+    offsets = calculate_target_offsets(args.plate, args.mjd, wlen_grid_steps=args.wlen_grid_steps,
+        save_guide_plots=args.save_guide_plots)
 
     # Calculate average correction from individual exposure offsets
     corrections = calculate_corrections(offsets)
