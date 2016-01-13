@@ -41,7 +41,7 @@ class Telescope(object):
             components.append(galsim.Gaussian(sigma=rms_jitter.to(u.arcsec).value))
         return galsim.Convolve(components)
 
-def calculate_fiber_acceptance(fiber_diameter, psf, sampling=100, max_offset=2):
+def calculate_fiber_acceptance(fiber_diameter, psf, sampling=100, max_offset=2, return_arrays=False):
     """
     Calculate the fiber acceptance fraction versus offset for a specified PSF.
     
@@ -73,7 +73,10 @@ def calculate_fiber_acceptance(fiber_diameter, psf, sampling=100, max_offset=2):
     for dy in range(height-width):
         acceptance[dy] = np.sum(image.array[dy:dy+width]*mask)
     #return offset,acceptance
-    return scipy.interpolate.interp1d(offset, acceptance, kind='linear', copy=True, bounds_error=True)
+    if return_arrays:
+        return offset, acceptance
+    else:
+        return scipy.interpolate.interp1d(offset, acceptance, kind='linear', copy=True, bounds_error=True)
 
 class AcceptanceModel(object):
     def __init__(self, seeing_fwhm, fiber_diameter=2*u.arcsec, sampling=100, max_offset=0.75):
