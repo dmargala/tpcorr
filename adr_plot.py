@@ -5,7 +5,7 @@
 import numpy as np
 import matplotlib as mpl
 mpl.rcParams.update({'font.size': 18})
-mpl.rcParams.update({'savefig.dpi': 100})
+mpl.rcParams.update({'savefig.dpi': 200})
 mpl.rcParams.update({'savefig.bbox': 'tight'})
 
 import matplotlib.pyplot as plt
