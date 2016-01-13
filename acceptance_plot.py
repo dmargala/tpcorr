@@ -72,10 +72,9 @@ def plot_offset_acceptance_ratio(t, D=2*u.arcsec, wlen=5400*u.Angstrom, fwhm=1.5
         plt.plot(offsets*D.to(u.arcsec).value, A/A_interp(d/D.to(u.arcsec).value), color=color, label=r'%.1f${}^{\prime\prime}$'%d)
         plt.plot(offsets*D.to(u.arcsec).value, A_gauss/A_gauss_interp(d/D.to(u.arcsec).value), color=color, ls='--')
 
-    plt.xlim(0,2)
+    plt.xlim(0, 2)
     plt.xlabel(r'Centroid Offset $d_{4000}$ $[\ {}^{\prime\prime}]\ $')
     plt.ylabel(r'$A(\sigma_\mathrm{PSF},\ d_{4000}) / A(\sigma_\mathrm{PSF},\ d_{5400})$')
-    plt.axvline(1,color='k',ls=':')
 
 def plot_offset_acceptance_ratio_ratio(t, D=2*u.arcsec, wlen=5400*u.Angstrom, fwhm=1.5, sampling=100):
 
@@ -96,10 +95,40 @@ def plot_offset_acceptance_ratio_ratio(t, D=2*u.arcsec, wlen=5400*u.Angstrom, fw
         color = cmap.to_rgba(d)
         plt.plot(offsets*D.to(u.arcsec).value, (A_gauss/A_gauss_interp(d/D.to(u.arcsec).value))/(A/A_interp(d/D.to(u.arcsec).value)), color=color, label=r'%.1f${}^{\prime\prime}$'%d)
 
-    plt.xlim(0,2)
+    plt.xlim(0, 2)
     plt.xlabel(r'Centroid Offset $d_{4000}$ $[\ {}^{\prime\prime}]\ $')
     plt.ylabel(r'$C_{Gaussian} / C_{Kolmogorov}$')
-    plt.axvline(1,color='k',ls=':')
+
+def plot_wlen_acceptance(t, wlen_vec=[3500,5400,10000], D=2*u.arcsec, fwhm=1.5,
+                           noffset=50, offset_min=0, offset_max=2):
+    plt.subplot(1,1,1)
+    A_vec = np.empty((len(wlen_vec), noffset,))
+    A_gauss_vec = np.empty((len(wlen_vec), noffset,))
+    offsets_vec = np.linspace(offset_min, offset_max, noffset)
+    
+    for i,wlen in enumerate(wlen_vec):
+        psf = t.get_atmospheric_psf(wlen*u.Angstrom, fwhm*u.arcsec)
+        offsets, acceptance = calculate_fiber_acceptance(D, psf, return_arrays=True)
+        interpolator = scipy.interpolate.interp1d(offsets, acceptance)
+        for j,offset in enumerate(offsets_vec):
+            A_vec[i,j] = interpolator((offset*u.arcsec/D).si.value)
+            
+        gauss_psf = t.get_atmospheric_psf(wlen*u.Angstrom, fwhm*u.arcsec, gauss=True)
+        offsets, acceptance = calculate_fiber_acceptance(D, gauss_psf, return_arrays=True)
+        interpolator = scipy.interpolate.interp1d(offsets, acceptance)
+        for j,offset in enumerate(offsets_vec):
+            A_gauss_vec[i,j] = interpolator((offset*u.arcsec/D).si.value)
+                    
+
+    linestyles = [':','-','--']
+    for i,wlen in enumerate(wlen_vec):
+        plt.plot(offsets_vec, A_vec[i], lw=2, ls=linestyles[i], label=('%d'%wlen), color='black')
+        plt.plot(offsets_vec, A_gauss_vec[i], lw=2, ls=linestyles[i], color='red')
+        
+    plt.legend(title='Wavelength $(\AA)$', fontsize=14)
+    plt.xlabel(r'Centroid Offset $d$ $(\mathrm{arcseconds})$')
+    plt.ylabel(r'Fiber Acceptance $A$')
+    plt.xlim(0, 2)
 
 
 def main():
@@ -117,15 +146,22 @@ def main():
     plt.figure(figsize=(8,6))
     plot_offset_acceptance_ratio(sdss_25m)
     plt.legend(title='$d_{5400}$', fontsize=14)
+    plt.axvline(1, color='gray', ls='-')
     plt.grid(True)
     plt.savefig('acceptance_ratio_plot.pdf')
 
     plt.figure(figsize=(8,6))
     plot_offset_acceptance_ratio_ratio(sdss_25m)
+    plt.axvline(1, color='gray', ls='-')
     plt.legend(title='$d_{5400}$', fontsize=14)
     plt.ylim(.6,1.2)
     plt.grid(True)
     plt.savefig('acceptance_ratio2_plot.pdf')
+
+    plt.figure(figsize=(8,6))
+    plot_wlen_acceptance(sdss_25m)
+    plt.axvline(1, color='gray', ls='-')
+    plt.savefig('acceptance_wlen_plot.pdf')
 
 if __name__ == '__main__':
     main()
