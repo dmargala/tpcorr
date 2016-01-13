@@ -5,17 +5,11 @@ import argparse
 import numpy as np
 import matplotlib as mpl
 mpl.use('Agg')
-
-# import warnings
-# warnings.filterwarnings('error', category=FutureWarning)
-# np.seterr(all='raise')
-
 import matplotlib.pyplot as plt
 
 import scipy.interpolate
 
-import bossdata
-import specsim
+import h5py
 
 import astropy.time
 import astropy.coordinates
@@ -24,17 +18,19 @@ import astropy.units.imperial
 import astropy.units.cds
 # astropy.units.imperial.enable()
 # astropy.units.cds.enable()
-# from astropy.coordinates import Angle
 
-import h5py
+import bossdata
+import specsim
 
 from pointing import *
 from guider import *
 from acceptance_model import *
 
-spAll = bossdata.meta.Database(lite=False)
+# import warnings
+# warnings.filterwarnings('error', category=FutureWarning)
+# np.seterr(all='raise')
 
-# ## Throughput Corrections
+## Throughput Corrections
 
 def normalize_angle(angle):
     while angle <= -180:
@@ -93,6 +89,7 @@ def calculate_target_offsets(plate, mjd, guide_wlen=5400*u.Angstrom, std_wlen=54
     
     # Find this plate's offset fibers. We have to use spAll for this since the plug map does
     # not record the design wavelengths.
+    spAll = bossdata.meta.Database(lite=False)
     offset_fibers = spAll.select_all(
         where='PLATE={} and MJD={} and LAMBDA_EFF={}'
         .format(plate, mjd, offset_wlen.to(u.Angstrom).value),
@@ -244,9 +241,9 @@ def calculate_corrections(offsets, seeing_wlen=5400.*u.Angstrom, platescale=217.
 
 def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
-    parser.add_argument('-p', '--plate', type=str, default='6641',
+    parser.add_argument('-p', '--plate', type=int, default=6641,
         help='plate id')
-    parser.add_argument('-m', '--mjd', type=str, default='56383',
+    parser.add_argument('-m', '--mjd', type=str, default=None,
         help='observation mjd')
     parser.add_argument('--output', type=str, default=None,
         help='output filename')
@@ -254,23 +251,42 @@ def main():
         help='Number of wlen grid steps to use for correction calculation (between 3500-10500 incl.)')
     args = parser.parse_args()
 
+    finder = bossdata.path.Finder()
+    mirror = bossdata.remote.Manager()
+
+    # If no mjd is provided, try to guess. For plates with multiple pluggings, print list of mjds and exit.
+    if args.mjd is None:
+        mjd_list = bossdata.meta.get_plate_mjd_list(
+            args.plate, finder=finder, mirror=mirror)
+        if len(mjd_list) == 0:
+            print('Plate {0:d} has not been observed with good data quality.'.format(
+                args.plate))
+            return -1
+        elif len(mjd_list) > 1:
+            print('Plate {0:d} has been observed on MJDs {1:s}.'.format(
+                args.plate, ','.join(map(str, mjd_list))))
+            print('Select one of these using the --mjd command-line argument.')
+            return -1
+        else:
+            args.mjd = mjd_list[0]
+
     # open output file
-    filename = 'corrections-%s-%s.hdf5' % (args.plate, args.mjd) if args.output is None else args.output
+    filename = 'corrections-%s-%s.hdf5' % (str(args.plate), str(args.mjd)) if args.output is None else args.output
     outfile = h5py.File(filename, 'w')
 
     # Calculate offsets for individual exposures
-    offsets = calculate_target_offsets(int(args.plate), int(args.mjd), wlen_grid_steps=args.wlen_grid_steps)
+    offsets = calculate_target_offsets(args.plate, args.mjd, wlen_grid_steps=args.wlen_grid_steps)
 
     # Calculate average correction from individual exposure offsets
     corrections = calculate_corrections(offsets)
 
     # Save corrections to output file
     outfile.create_dataset('wave', data=offsets['wlen_grid'])
-    outfile.create_group(args.plate)
-    outfile[args.plate].create_group(args.mjd)
+    outfile.create_group(str(args.plate))
+    outfile[str(args.plate)].create_group(str(args.mjd))
 
     for fiber, correction in zip(offsets['fibers'], corrections):
-        dset = outfile.create_dataset('/'.join([args.plate,args.mjd,str(fiber)]), data=correction, dtype='f4')
+        dset = outfile.create_dataset('/'.join(map(str,[args.plate,args.mjd,fiber])), data=correction, dtype='f4')
 
     outfile.close()
 
