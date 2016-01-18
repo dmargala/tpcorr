@@ -2,3 +2,4 @@
 *.png
 *.hdf5
 *.pdf
+*.ipynb*
