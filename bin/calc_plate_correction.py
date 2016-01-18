@@ -14,6 +14,8 @@ import astropy.units.cds
 import bossdata
 import specsim
 
+import tpcorr
+
 from pointing import *
 from guider import *
 from acceptance_model import *
@@ -52,7 +54,7 @@ def calculate_target_offsets(plate, mjd, guide_wlen=5400*u.Angstrom, std_wlen=54
     ra_center = float(plug_map['raCen']) * u.deg
     dec_center = float(plug_map['decCen']) * u.deg
     print 'Plate center is RA={:.3f}, DEC={:.3f} for {}-{}'.format(ra_center, dec_center, plate, pointing_label)
-    pointing = Pointing(ra_center, dec_center)
+    pointing = tpcorr.pointing.Pointing(ra_center, dec_center)
     
     # Find the nominal observing temperature and time that this plate's holes are drilled for.
     # apo = specsim.transform.observatories['APO']
@@ -176,7 +178,7 @@ def calculate_target_offsets(plate, mjd, guide_wlen=5400*u.Angstrom, std_wlen=54
             guide_targets[:, np.newaxis], tai_steps, guide_wlen, temperature, pressure)
         
         # Solve for the optimal guider corrections.
-        guider = Guider(guide_x0, guide_y0, guide_x, guide_y)
+        guider = tpcorr.guider.Guider(guide_x0, guide_y0, guide_x, guide_y)
         if save_guide_plots:
             guider.plot(tai_steps, field_radius=340 * u.mm, zoom=5000.,
                         fiber_radius=0.1 * u.arcsec * pointing.platescale,
@@ -204,7 +206,7 @@ def calculate_target_offsets(plate, mjd, guide_wlen=5400*u.Angstrom, std_wlen=54
 def calculate_corrections(offsets, seeing_wlen=5400.*u.Angstrom, platescale=217.7358*u.mm/u.deg):
 
     # Initialize telescope model
-    sdss_25m = Telescope(diameter=2.5*u.m, obscuration_area_fraction=0.27, plate_scale=platescale)
+    sdss_25m = tpcorr.acceptance_model.Telescope(diameter=2.5*u.m, obscuration_area_fraction=0.27, plate_scale=platescale)
 
     # Extract precomputed centroid positions
     offset_x0 = offsets['offset_x0']

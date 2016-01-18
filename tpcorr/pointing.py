@@ -10,7 +10,7 @@ import astropy.units as u
 
 import specsim
 
-from distortion import *
+import tpcorr.distortion
 
 class Pointing(object):
     """Represents an observer pointing at a fixed sky location.
@@ -22,8 +22,8 @@ class Pointing(object):
         self.wlen0 = 5500 * u.Angstrom
         self.relhum = 0.2
         self.where = astropy.coordinates.EarthLocation.of_site('apo')
-        self.distortion_model = get_optical_distortion_model(330.0 * u.mm, self.platescale)
-        self.chromatic_model = get_chromatic_distortion_model(self.platescale)
+        self.distortion_model = tpcorr.distortion.get_optical_distortion_model(330.0 * u.mm, self.platescale)
+        #self.chromatic_model = tpcorr.distortion.get_chromatic_distortion_model(self.platescale)
 
     def transform(self, targets, tai, wlen, temperature, pressure):
         """Transform from sky coordinates to focal plane coordinates.
