@@ -24,7 +24,7 @@ Most of these are pip installable. `galsim` might be a bit of extra work.
 To calculate corrections for the offset fibers on a given plate-mjd and save them to an hdf5 file use:
 
 ```
-./calc_plate_correction.py --plate 6641 --mjd 56383
+calc_plate_correction --plate 6641
 ```
 
-For more options use `./calc_plate_correction.py --help`.
+For full list of options use `calc_plate_correction --help`.
