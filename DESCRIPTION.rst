@@ -1,0 +1,1 @@
+Throughput correction code for offset fibers in SDSS.

@@ -16,10 +16,6 @@ import specsim
 
 import tpcorr
 
-from pointing import *
-from guider import *
-from acceptance_model import *
-
 # helper function for shifting angles to desired range
 def normalize_angle(angle):
     while angle <= -180:

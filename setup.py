@@ -29,9 +29,9 @@ with open('DESCRIPTION.rst') as f:
 requirements = [
     'numpy>=1.9.2',
     'astropy>=1.0.1',
-    'bossdata>=0.2.9dev',
-    'specsim>=0.2.dev283',
-    'h5py>=2.5.0',
+    # 'bossdata>=0.2.9dev',
+    # 'specsim>=0.2.dev283',
+    # 'h5py>=2.5.0',
 ]
 
 test_requirements = [
