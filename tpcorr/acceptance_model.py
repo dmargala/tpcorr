@@ -10,13 +10,11 @@ class Telescope(object):
     """
     Represents a telescope.
     """
-    def __init__(self, diameter=3.80*u.m, obscuration_area_fraction=0.25, 
-                 throughput=0.95*0.77, plate_scale=67.40*u.um/u.arcsec):
+    def __init__(self, diameter=2.5*u.m, obscuration_area_fraction=0.27, plate_scale=217.7358*u.mm/u.deg):
         import galsim
         self.galsim = galsim
         self.diameter = diameter
         self.obscuration_area_fraction = obscuration_area_fraction
-        self.throughput = throughput
         self.plate_scale = plate_scale
         self.effective_area = np.pi*diameter**2/4.*(1-obscuration_area_fraction)
     def get_optical_psf(self, wavelength):
@@ -41,7 +39,7 @@ class Telescope(object):
             components.append(self.galsim.Gaussian(sigma=rms_jitter.to(u.arcsec).value))
         return self.galsim.Convolve(components)
 
-    def calculate_fiber_acceptance(self, fiber_diameter, psf, sampling=100, max_offset=2, return_arrays=False):
+    def calculate_fiber_acceptance(self, psf, fiber_diameter=2*u.arcsec, sampling=100, max_offset=2, return_arrays=False):
         """
         Calculate the fiber acceptance fraction versus offset for a specified PSF.
         
@@ -74,9 +72,10 @@ class Telescope(object):
             acceptance[dy] = np.sum(image.array[dy:dy+width]*mask)
         #return offset,acceptance
         if return_arrays:
-            return offset, acceptance
+            return offset*fiber_diameter.to(u.arcsec).value, acceptance
         else:
-            return scipy.interpolate.interp1d(offset, acceptance, kind='linear', copy=True, bounds_error=True)
+            return scipy.interpolate.interp1d(
+                offset*fiber_diameter.to(u.arcsec).value, acceptance, kind='linear', copy=True, bounds_error=True)
 
 class AcceptanceModel(object):
     def __init__(self, seeing_fwhm, fiber_diameter=2*u.arcsec, sampling=100, max_offset=0.75):
@@ -116,4 +115,50 @@ class AcceptanceModel(object):
         return self.interpolation(centroid_offsets.to(u.arcsec).value)
 
 if __name__ == '__main__':
-    pass
+
+    std_fwhm = 1.5 * u.arcsec
+    std_wlen = 5400 * u.Angstrom
+
+    acceptance_model = AcceptanceModel(std_fwhm)
+
+    wlen_array = np.linspace(3500., 10500., 15) * u.Angstrom
+    wlen_ratio = (wlen_array / std_wlen).si
+
+    fwhm_array = std_fwhm*wlen_ratio**(-0.2)
+    amodel_array = map(AcceptanceModel, fwhm_array)
+
+    offset_grid = np.zeros((5, 15))
+    offset_grid += np.linspace(0, 1., 15)[np.newaxis, :]
+    offset_grid += np.linspace(0,.05, 5)[:, np.newaxis]
+
+    acceptance_grid = np.empty_like(offset_grid)
+
+    for i, wlen in enumerate(wlen_array):
+        amodel = amodel_array[i]
+        acceptance_grid[:,i] = amodel(offset_grid[:,i]*u.arcsec)
+
+    import matplotlib.pyplot as plt
+
+    plt.figure(figsize=(8,6))
+    plt.plot(wlen_array, fwhm_array)
+    plt.axvline(std_wlen.value, c='k', ls='--')
+    plt.axhline(std_fwhm.value, c='k', ls='--')
+    plt.xlabel('Wavelength (Angstrom)')
+    plt.ylabel('PSF FWHM (arcsec)')
+    plt.xlim(wlen_array[0].value, wlen_array[-1].value)
+    plt.grid(True)
+    plt.show()
+
+    plt.figure(figsize=(8,6))
+    for i in range(5):
+        plt.plot(wlen_array, acceptance_grid[i])
+    plt.xlabel('Wavelength (Angstrom)')
+    plt.ylabel('Acceptance')
+    plt.xlim(wlen_array[0].value, wlen_array[-1].value)
+    plt.grid(True)
+    plt.show()
+
+
+
+
+
