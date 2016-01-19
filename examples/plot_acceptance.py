@@ -2,6 +2,7 @@
 
 import numpy as np
 import matplotlib as mpl
+mpl.use('Agg')
 mpl.rcParams.update({'font.size': 18})
 mpl.rcParams.update({'savefig.dpi': 200})
 mpl.rcParams.update({'savefig.bbox': 'tight'})
@@ -12,7 +13,7 @@ import scipy.interpolate
 
 import astropy.units as u
 
-from acceptance_model import *
+import tpcorr
 
 def plot_offset_acceptance(t, D=2*u.arcsec, wlen=5400*u.Angstrom, fwhm1=1.2, fwhm2=1.8, nfwhm=3, 
                            noffset=50, offset_min=0, offset_max=2):
@@ -133,7 +134,7 @@ def plot_wlen_acceptance(t, wlen_vec=[3500,5400,10000], D=2*u.arcsec, fwhm=1.5,
 
 def main():
 
-    sdss_25m = Telescope(diameter=2.5*u.m, obscuration_area_fraction=0.27, plate_scale=217.7358*u.mm/u.deg)
+    sdss_25m = tpcorr.acceptance_model.Telescope(diameter=2.5*u.m, obscuration_area_fraction=0.27, plate_scale=217.7358*u.mm/u.deg)
 
     plt.figure(figsize=(8,6))
     plot_offset_acceptance(sdss_25m, fwhm1=1.2, fwhm2=1.8, offset_max=2, noffset=200)
