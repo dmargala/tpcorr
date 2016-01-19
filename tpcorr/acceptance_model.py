@@ -124,14 +124,14 @@ if __name__ == '__main__':
     wlen_array = np.linspace(3500., 10500., 15) * u.Angstrom
     wlen_ratio = (wlen_array / std_wlen).si
 
-    fwhm_array = std_fwhm*wlen_ratio**(-0.2)
-    amodel_array = map(AcceptanceModel, fwhm_array)
-
     offset_grid = np.zeros((5, 15))
     offset_grid += np.linspace(0, 1., 15)[np.newaxis, :]
     offset_grid += np.linspace(0,.05, 5)[:, np.newaxis]
 
     acceptance_grid = np.empty_like(offset_grid)
+
+    fwhm_array = std_fwhm*wlen_ratio**(-0.2)
+    amodel_array = map(AcceptanceModel, fwhm_array)
 
     for i, wlen in enumerate(wlen_array):
         amodel = amodel_array[i]
