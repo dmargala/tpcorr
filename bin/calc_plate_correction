@@ -152,6 +152,7 @@ def calculate_target_offsets(plate, mjd, guide_wlen=5400*u.Angstrom, std_wlen=54
         seeing = b1_frame.header['SEEING50'] * u.arcsec
         if seeing == 0 * u.arcsec:
             seeing = 1.49 * u.arcsec
+            print 'Exposure meta data not found, using nominal values.'
         try:
             temperature = b1_frame.header['AIRTEMP'] * u.deg_C
         except ValueError,e:
