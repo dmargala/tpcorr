@@ -4,20 +4,20 @@
 
 ### Python packages
 
-Most of these are pip installable. `galsim` might be a bit of extra work.
+Most of these are pip installable. `galsim` is a bit of extra work.
 
  * numpy
  * scipy
  * matplotlib
  * h5py
  * astropy
- * galsim
  * specsim
  * bossdata
+ * galsim
 
 ### BOSS data
 
-`bossdata` handles interaction with BOSS data including automatic downloading of required data. One will also need to checkout the platelist repository from the public SDSS SVN.
+`bossdata` handles interaction with BOSS data including automatic downloading of required data. One will also need to checkout the `speclog` repository from the public SDSS SVN.
 
 ## Usage
 
