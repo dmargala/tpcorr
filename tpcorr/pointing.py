@@ -21,7 +21,10 @@ class Pointing(object):
         self.platescale = 217.7358 * u.mm / u.deg
         self.wlen0 = 5500 * u.Angstrom
         self.relhum = 0.2
-        self.where = astropy.coordinates.EarthLocation.of_site('apo')
+        try:
+            self.where = astropy.coordinates.EarthLocation.of_site('apo')
+        except astropy.coordinates.errors.UnknownSiteException:
+            self.where = astropy.coordinates.EarthLocation(lat=32.7797556*u.deg, lon=-(105+49./60.+13/3600.)*u.deg, height=2797*u.m)
         self.distortion_model = tpcorr.distortion.get_optical_distortion_model(330.0 * u.mm, self.platescale)
         #self.chromatic_model = tpcorr.distortion.get_chromatic_distortion_model(self.platescale)
 
