@@ -78,7 +78,7 @@ class Telescope(object):
                 offset*fiber_diameter.to(u.arcsec).value, acceptance, kind='linear', copy=True, bounds_error=True)
 
 class AcceptanceModel(object):
-    def __init__(self, seeing_fwhm, fiber_diameter=2*u.arcsec, sampling=100, max_offset=0.75):
+    def __init__(self, seeing_fwhm, fiber_diameter=2*u.arcsec, sampling=100, max_offset=2.0):
         """
         Calculate the fiber acceptance fraction versus offset for a specified PSF.
 
