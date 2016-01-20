@@ -47,3 +47,5 @@ docs/_build
 # Data files
 *.fits
 *.hdf5
+*.pdf
+*.png
