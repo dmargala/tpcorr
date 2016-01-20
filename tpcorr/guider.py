@@ -1,10 +1,12 @@
 ## Ideal Guiding Model
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import astropy.units as u
 import scipy.linalg
+
+import matplotlib.pyplot as plt
+
 
 class Guider(object):
     """Calculates optimum guider corrections.
@@ -62,6 +64,7 @@ class Guider(object):
     def plot(self, tai, zoom=3000, field_radius=None, fiber_radius=None, save=None):
         """
         """
+
         plt.figure(figsize=(12, 12))
         assert len(tai.shape) == 1 and len(tai) == self.nt, 'tai has unexpected shape.'
         
@@ -90,8 +93,6 @@ class Guider(object):
                      (y0 + zoom * (self.y_after[i] - y0)).to(u.mm).value, 'r-',
                     label=(None if i else 'Ideal Guiding'))
         plt.legend(loc='lower left')
-        
-        plt.tight_layout()
         if save:
             plt.savefig(save)
 

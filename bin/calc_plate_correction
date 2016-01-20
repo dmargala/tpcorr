@@ -215,19 +215,17 @@ def calculate_corrections(offsets, seeing_wlen=5400.*u.Angstrom, platescale=217.
     offset_x0_std = offsets['offset_x0_std']
     offset_y0_std = offsets['offset_y0_std']
     guided_centroids = offsets['guided_centroids']
+    wlen_grid = offsets['wlen_grid']
+
+    wlen_ratio = (wlen_grid / seeing_wlen).si
 
     corrections = np.empty(
-        (offsets['num_exposures'], len(offsets['fibers']), len(offsets['wlen_grid']), offsets['steps_per_exposure']),
+        (offsets['num_exposures'], len(offsets['fibers']), len(wlen_grid), offsets['steps_per_exposure']),
         dtype=float)
 
     obs_seeing = offsets['obs_seeing']
 
     for exp_index in range(offsets['num_exposures']):
-
-        seeing = obs_seeing[exp_index]
-
-        psf = sdss_25m.get_atmospheric_psf(seeing_wlen, seeing, gauss=False)
-        acceptance_model = sdss_25m.calculate_fiber_acceptance(psf)
 
         guided_x, guided_y = guided_centroids[exp_index]
 
@@ -242,13 +240,23 @@ def calculate_corrections(offsets, seeing_wlen=5400.*u.Angstrom, platescale=217.
             (guided_x - offset_x0_std[:, np.newaxis, np.newaxis])**2 +
             (guided_y - offset_y0_std[:, np.newaxis, np.newaxis])**2)
 
-        # Calculate the acceptance fractions for both sets of centroid offsets.
-        acceptance = acceptance_model((offset / platescale).to(u.arcsec).value)
-        acceptance_std = acceptance_model((offset_std / platescale).to(u.arcsec).value)
-        
-        # Calculate the acceptance fraction ratios, tabulated for each offset target, wavelength and time.
-        # The ratio calculated this way gives the correction of eqn (13).
-        corrections[exp_index] = acceptance_std / acceptance
+        seeing = obs_seeing[exp_index]
+        # psf = sdss_25m.get_atmospheric_psf(seeing_wlen, seeing, gauss=False)
+        # acceptance_model = sdss_25m.calculate_fiber_acceptance(psf)
+
+        seeing_wlen_adjusted = seeing*wlen_ratio**(-0.2)
+        acceptance_model_grid = map(tpcorr.acceptance_model.AcceptanceModel, seeing_wlen_adjusted)
+
+        for wlen_index in range(len(wlen_grid)):
+            acceptance_model = acceptance_model_grid[wlen_index]
+
+            # Calculate the acceptance fractions for both sets of centroid offsets.
+            acceptance = acceptance_model((offset[:,wlen_index,:] / platescale).to(u.arcsec))
+            acceptance_std = acceptance_model((offset_std[:,wlen_index,:] / platescale).to(u.arcsec))
+            
+            # Calculate the acceptance fraction ratios, tabulated for each offset target, wavelength and time.
+            # The ratio calculated this way gives the correction of eqn (13).
+            corrections[exp_index,:,wlen_index,:] = acceptance_std / acceptance
 
     # Average the correction over each exposure time slice.
     avg_corrections = np.mean(np.mean(corrections, axis=-1), axis=0)

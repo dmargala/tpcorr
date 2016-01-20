@@ -112,8 +112,6 @@ def main():
 
     design_ha_array = np.array(design_ha_array)
 
-    #     print 'Design HA={:.3f}'.format(design_ha)
-
     plt.figure(figsize=(8,6))
     plt.hist(ha_array-design_ha_array, bins=np.linspace(-45,45,91), alpha=0.5, histtype='stepfilled')
     plt.xlabel(r'$h_{obs} - h_{design}$ (degrees)')
