@@ -126,6 +126,11 @@ def main():
             corrections, avg_corrections, guided_centroids = obs.get_corrections()
             # Create plate
             outfile_grp = outfile.create_group('{}/{}'.format(plate, mjd))
+            outfile_grp.attrs['design_ha'] = obs.design_ha.to(u.deg).value
+            outfile_grp.attrs['design_alt'] = obs.design_alt.to(u.deg).value
+            outfile_grp.attrs['ha'] = np.mean(obs.ha.to(u.deg).value)
+            outfile_grp.attrs['alt'] = np.mean(obs.alt.to(u.deg).value)
+
             # Loop over offset fibers
             for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
                 # Save exposure averaged correction

@@ -53,12 +53,17 @@ class Observation(object):
         # Find the nominal observing temperature and time that this plate's holes are drilled for.
         design_temp = float(plug_map['temp'])*u.deg_C
         design_pressure = None # Calculate based on elevation and temperature
-        design_ha = float(plug_map['ha'].split()[pointing_index]) * u.deg
+        self.design_ha = float(plug_map['ha'].split()[pointing_index]) * u.deg
         midnight = astropy.time.Time(mjd, format='mjd', scale='tai', location=self.pointing.where)
-        design_time = specsim.transform.adjust_time_to_hour_angle(midnight, ra_center, design_ha)
+        design_time = specsim.transform.adjust_time_to_hour_angle(midnight, ra_center, self.design_ha)
         self.design_tai = design_time.mjd * 86400.
-        print 'Holes drilled for T={:.1f} and HA={:.1f} (TAI={:.1f})'.format(design_temp, design_ha, self.design_tai)
+        print 'Holes drilled for T={:.1f} and HA={:.1f} (TAI={:.1f})'.format(design_temp, self.design_ha, self.design_tai)
         
+        # design_time.mjd
+        # when = astropy.time.Time(tai/86400., format='mjd', scale='tai', location=self.where)
+        self.design_alt = self.pointing.plate_center.transform_to(astropy.coordinates.AltAz(
+            obstime=design_time, location=self.pointing.where)).alt.to(u.deg)
+
         # Find this plate's guide stars.
         plugging = plug_map['PLUGMAPOBJ']
         guide_fibers = plugging['holeType'] == 'GUIDE'
@@ -109,6 +114,7 @@ class Observation(object):
         self.temperature = np.empty((self.spec_file.num_exposures)) * u.deg_C
         self.tai_beg = np.empty((self.spec_file.num_exposures)) # seconds
         self.tai_end = np.empty((self.spec_file.num_exposures)) # seconds
+        self.alt = np.empty((self.spec_file.num_exposures)) * u.degree
 
         self.init_exposure_meta(temperature0=design_temp)
 
@@ -151,6 +157,10 @@ class Observation(object):
             except ValueError, e:
                 print 'Warning: PRESSURE not found, using nominal value.', e
                 self.pressure[exp_index] = pressure0
+
+            obstime = astropy.time.Time(tai_mid/86400., format='mjd', scale='tai', location=self.pointing.where)
+            self.alt[exp_index] = self.pointing.plate_center.transform_to(astropy.coordinates.AltAz(
+                obstime=obstime, location=self.pointing.where)).alt.to(u.deg)
 
             print 'Exp[{:02d}] #{:08d} seeing {:.3f}, T={:+5.1f}, P={:.1f}, TAI {:.1f} ({:+7.3f} days, HA {:+.1f})'.format(
                 exp_index, exp_id, self.seeing[exp_index], self.temperature[exp_index], self.pressure[exp_index], 
