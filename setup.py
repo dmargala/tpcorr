@@ -40,7 +40,7 @@ test_requirements = [
 
 setup(
     name='tpcorr',
-    version='0.1.0',
+    version='0.1.1',
     description='Throughput correction code for offset fibers in SDSS.',
     long_description=long_description,
     author='tpcorr developers',
@@ -52,7 +52,7 @@ setup(
     package_dir={'tpcorr':
                  'tpcorr'},
     scripts = [
-        'bin/calc_plate_correction',
+        'bin/tpcorr',
     ],
     #include_package_data=True,
     #zip_safe=False,

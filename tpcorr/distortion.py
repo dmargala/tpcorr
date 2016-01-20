@@ -7,7 +7,6 @@
 # Note that the relative distortion number only have one significant digit, so are of limited use.
 
 import numpy as np
-import matplotlib.pyplot as plt
 
 import scipy.interpolate
 
@@ -29,6 +28,7 @@ def get_optical_distortion_model(r_max, platescale, npts=100):
     return model
 
 def plot_optical_distortion(r_max=325*u.mm, platescale=217.7358*u.mm/u.deg):
+    import matplotlib.pyplot as plt
     model = get_optical_distortion_model(r_max, platescale)
     r = np.linspace(0, r_max.to(u.mm).value, 100)*u.mm
     dr = (model(r) / platescale).to(u.arcsec)
@@ -96,6 +96,7 @@ def get_chromatic_distortion_model(platescale):
 
 
 def plot_chromatic_distortion(wlen=4000*u.Angstrom, r_max=325*u.mm, platescale=217.7358*u.mm/u.deg):
+    import matplotlib.pyplot as plt
     model = get_chromatic_distortion_model(platescale)
     r = np.linspace(0, r_max.to(u.mm).value, 100)*u.mm
     dr = (model(r, wlen.to(u.Angstrom).value) / platescale).to(u.arcsec)
@@ -106,6 +107,7 @@ def plot_chromatic_distortion(wlen=4000*u.Angstrom, r_max=325*u.mm, platescale=2
 
 
 if __name__ == '__main__':
+    import matplotlib.pyplot as plt
     plot_optical_distortion()
     plt.show()
     wlen_array = np.linspace(3500, 10500, 15)*u.Angstrom

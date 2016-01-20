@@ -3,7 +3,7 @@
 
 __author__ = 'tpcorr developers'
 __email__ = 'dmargala@uci.edu'
-__version__ = '0.1.0'
+__version__ = '0.1.1'
 
 import tpcorr.acceptance_model
 import tpcorr.distortion

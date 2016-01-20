@@ -5,9 +5,6 @@ import numpy as np
 import astropy.units as u
 import scipy.linalg
 
-import matplotlib.pyplot as plt
-
-
 class Guider(object):
     """Calculates optimum guider corrections.
     """
@@ -64,6 +61,7 @@ class Guider(object):
     def plot(self, tai, zoom=3000, field_radius=None, fiber_radius=None, save=None):
         """
         """
+        import matplotlib.pyplot as plt
 
         plt.figure(figsize=(12, 12))
         assert len(tai.shape) == 1 and len(tai) == self.nt, 'tai has unexpected shape.'

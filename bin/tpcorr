@@ -292,7 +292,7 @@ def main():
         filename = 'corrections.hdf5' if args.output is None else args.output
         outfile = h5py.File(filename, 'w')
 
-        for obs in good_plates[:10]:
+        for obs in good_plates:
             plate, mjd = obs['PLATE'], obs['MJD']
             offsets = calculate_target_offsets(plate, mjd, wlen_grid_steps=args.wlen_grid_steps,
                 save_guide_plots=args.save_guide_plots)
