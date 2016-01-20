@@ -12,6 +12,14 @@ import specsim
 
 import tpcorr.distortion
 
+# helper function for shifting angles to desired range
+def normalize_angle(angle):
+    while angle <= -180:
+        angle += 360
+    while angle > 180:
+        angle -= 360
+    return angle
+
 class Pointing(object):
     """Represents an observer pointing at a fixed sky location.
     """

@@ -9,3 +9,4 @@ import tpcorr.acceptance_model
 import tpcorr.distortion
 import tpcorr.guider
 import tpcorr.pointing
+import tpcorr.observation
