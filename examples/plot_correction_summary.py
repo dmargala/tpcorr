@@ -16,7 +16,8 @@ import h5py
 def main():
     tpcorr = h5py.File('corrections.hdf5')
 
-    wave = np.squeeze(tpcorr['wave'].value)
+    #wave = np.squeeze(tpcorr['wave'].value)
+    wave = np.linspace(3500., 10500., 15)
 
     tpcorrs = []
     ha = []
@@ -149,9 +150,8 @@ def main():
     # cbar.set_ticklabels(cbar_alt_labels)
     cbar.solids.set_rasterized(True)
     cbar.solids.set_edgecolor("face")
-    plt.tight_layout()
 
-    plt.savefig('dalt-dha-scatter.pdf', bbox_inches='tight', dpi=200)
+    #plt.savefig('dalt-dha-scatter.pdf')
 
 if __name__ == '__main__':
     main()
