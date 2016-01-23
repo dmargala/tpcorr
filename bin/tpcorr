@@ -60,6 +60,8 @@ def main():
         help='Save per exposure offset data.')
     parser.add_argument('--max-obs', type=int, default=0,
         help='Maximum number of observations to calculate corrections for')
+    parser.add_argument('--start-plate', type=int, default=0,
+        help='Skip to start at this plate')
     args = parser.parse_args()
 
     finder = bossdata.path.Finder()
@@ -120,8 +122,12 @@ def main():
         # Loop over good plates
         for good_plate in good_plates[:max_obs]:
             plate, mjd = good_plate['PLATE'], good_plate['MJD']
+            if plate < args.start_plate:
+                continue
             # Initialize observation model
             obs = tpcorr.observation.Observation(plate, mjd, wlen_grid_steps=args.wlen_grid_steps)
+            if len(obs.offset_targets) == 0:
+                continue
             # Calculate average correction from individual exposure offsets
             corrections, avg_corrections, guided_centroids = obs.get_corrections()
             # Create plate
