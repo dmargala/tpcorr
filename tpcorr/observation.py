@@ -55,7 +55,7 @@ class Observation(object):
         design_pressure = None # Calculate based on elevation and temperature
         self.design_ha = float(plug_map['ha'].split()[pointing_index]) * u.deg
         midnight = astropy.time.Time(mjd, format='mjd', scale='tai', location=self.pointing.where)
-        design_time = specsim.transform.adjust_time_to_hour_angle(midnight, ra_center, self.design_ha)
+        design_time = specsim.transform.adjust_time_to_hour_angle(midnight, ra_center, self.design_ha, max_iterations=100)
         self.design_tai = design_time.mjd * 86400.
         print 'Holes drilled for T={:.1f} and HA={:.1f} (TAI={:.1f})'.format(design_temp, self.design_ha, self.design_tai)
         
@@ -89,17 +89,18 @@ class Observation(object):
         self.num_offset_targets = np.count_nonzero(self.offset_targets)
         print 'Plate has {:d} guide fibers and {:d} offset targets.'.format(len(self.guide_targets), self.num_offset_targets)
 
-        # Calculate the nominal science fiber positions. These will not match XFOCAL, YFOCAL
-        # exactly since we do not exactly replicate the IDL transforms, but they should be
-        # close (within ~0.2 arcsec) and we only use offsets calculated consistently with
-        # transform() in the following.
-        self.offset_x0, self.offset_y0, offset_alt, offset_az = self.pointing.transform(
-            self.offset_targets, self.design_tai, offset_wlen, design_temp, design_pressure)
+        if self.num_offset_targets > 0:
+            # Calculate the nominal science fiber positions. These will not match XFOCAL, YFOCAL
+            # exactly since we do not exactly replicate the IDL transforms, but they should be
+            # close (within ~0.2 arcsec) and we only use offsets calculated consistently with
+            # transform() in the following.
+            self.offset_x0, self.offset_y0, offset_alt, offset_az = self.pointing.transform(
+                self.offset_targets, self.design_tai, offset_wlen, design_temp, design_pressure)
         
-        # Calculate where the offset target fibers would have been positioned if they were
-        # designed for the same wavelength as the standard stars.
-        self.offset_x0_std, self.offset_y0_std, _, _ = self.pointing.transform(
-            self.offset_targets, self.design_tai, std_wlen, design_temp, design_pressure)
+            # Calculate where the offset target fibers would have been positioned if they were
+            # designed for the same wavelength as the standard stars.
+            self.offset_x0_std, self.offset_y0_std, _, _ = self.pointing.transform(
+                self.offset_targets, self.design_tai, std_wlen, design_temp, design_pressure)
         
         # Initialize the wavelength grid to use for calculating corrections.
         self.wlen_grid = np.linspace(3500., 10500., wlen_grid_steps)[:, np.newaxis] * u.Angstrom
@@ -235,10 +236,13 @@ class Observation(object):
 
             seeing_wlen_adjusted = seeing*wlen_ratio**(-0.2)
             # acceptance_model_grid = map(tpcorr.acceptance_model.AcceptanceModel, seeing_wlen_adjusted)
+            max_offset = 1.1/2.0*max(np.max((offset / self.pointing.platescale).to(u.arcsec)).value,
+                    np.max((offset_std / self.pointing.platescale).to(u.arcsec)).value)
+
 
             for wlen_index in range(self.wlen_grid_steps):
                 # Build acceptance model for this wavelength
-                acceptance_model = tpcorr.acceptance_model.AcceptanceModel(seeing_wlen_adjusted[wlen_index])
+                acceptance_model = tpcorr.acceptance_model.AcceptanceModel(seeing_wlen_adjusted[wlen_index], max_offset=max_offset)
 
                 # Calculate the acceptance fractions for both sets of centroid offsets.
                 acceptance = acceptance_model((offset[:,wlen_index,:] / self.pointing.platescale).to(u.arcsec))
