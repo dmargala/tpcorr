@@ -84,26 +84,29 @@ def main():
             else:
                 args.mjd = mjd_list[0]
 
-        # open output file
-        filename = 'corrections-%s-%s.hdf5' % (str(args.plate), str(args.mjd)) if args.output is None else args.output
-        outfile = h5py.File(filename, 'w')
 
         # Initialize observation model
         obs = tpcorr.observation.Observation(args.plate, args.mjd, wlen_grid_steps=args.wlen_grid_steps)
-        # Calculate average correction from individual exposure offsets
-        corrections, avg_corrections, guided_centroids = obs.get_corrections()
 
-        # Save corrections to output file
-        outfile.create_dataset('wave', data=obs.wlen_grid)
-        outfile.create_group(str(args.plate))
-        outfile[str(args.plate)].create_group(str(args.mjd))
+        if len(obs.offset_targets) > 0:
+            # open output file
+            filename = 'corrections-%s-%s.hdf5' % (str(args.plate), str(args.mjd)) if args.output is None else args.output
+            outfile = h5py.File(filename, 'w')
 
-        for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
-            outfile.create_dataset('{}/{}/{}'.format(args.plate,args.mjd,fiber), data=avg_correction, dtype='f4')
-        outfile.close()
+            # Calculate average correction from individual exposure offsets
+            corrections, avg_corrections, guided_centroids = obs.get_corrections()
 
-        if args.save_debug_data:
-            save_debug_data(obs, corrections, guided_centroids, 'debug_' + filename)
+            # Save corrections to output file
+            outfile.create_dataset('wave', data=obs.wlen_grid)
+            outfile.create_group(str(args.plate))
+            outfile[str(args.plate)].create_group(str(args.mjd))
+
+            for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
+                outfile.create_dataset('{}/{}/{}'.format(args.plate,args.mjd,fiber), data=avg_correction, dtype='f4')
+            outfile.close()
+
+            if args.save_debug_data:
+                save_debug_data(obs, corrections, guided_centroids, 'debug_' + filename)
     else:
         # If no plate is provided, run over all plates.
         platelist = bossdata.meta.Database(platelist=True)
@@ -122,6 +125,16 @@ def main():
         # Loop over good plates
         for good_plate in good_plates[:max_obs]:
             plate, mjd = good_plate['PLATE'], good_plate['MJD']
+            # These two plates do not have any offset targets (and they're 
+            # missing r2 exposures which requires causes an error when obs 
+            # initialized below).
+            if plate in (7334, 7336):
+                continue
+            # This plate has an issue with exposure names missing in header data
+            # skip for now.
+            if plate == 6138:
+                print 'Skipping plate 6138.'
+                continue
             if plate < args.start_plate:
                 continue
             # Initialize observation model
