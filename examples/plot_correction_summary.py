@@ -16,8 +16,8 @@ import h5py
 def main():
     tpcorr = h5py.File('corrections.hdf5')
 
-    #wave = np.squeeze(tpcorr['wave'].value)
-    wave = np.linspace(3500., 10500., 15)
+    wave = np.squeeze(tpcorr['wave'].value)
+    # wave = np.linspace(3500., 10500., 15)
 
     tpcorrs = []
     ha = []
@@ -38,6 +38,8 @@ def main():
             for fiber in grp.keys():
                 tpcorrs.append(tpcorr[plate][mjd][fiber].value.tolist())
     tpcorrArray = np.array(tpcorrs)
+
+    print len(tpcorrs)
 
     mean_ha = np.array(ha)
     design_ha = np.array(design_ha)
@@ -66,16 +68,16 @@ def main():
     # N-sigma percentile corrections
     tpcorrps = [np.percentile(tpcorrArray, percentile, axis=0) for percentile in percentiles]
 
-    # opt_tpcorrmean = np.mean(opt_tpcorrArray, axis=0)
-    # opt_tpcorrps = [np.percentile(opt_tpcorrArray, percentile, axis=0) for percentile in percentiles]
-    opt_tpcorrmean = np.mean(tpcorrArray, axis=0)
-    opt_tpcorrps = [np.percentile(tpcorrArray, percentile, axis=0) for percentile in percentiles]
+    opt_tpcorrmean = np.mean(opt_tpcorrArray, axis=0)
+    opt_tpcorrps = [np.percentile(opt_tpcorrArray, percentile, axis=0) for percentile in percentiles]
+    # opt_tpcorrmean = np.mean(tpcorrArray, axis=0)
+    # opt_tpcorrps = [np.percentile(tpcorrArray, percentile, axis=0) for percentile in percentiles]
     #  5 =>  4000
     # 25 =>  6000
     # 40 =>  7500
     # -6 => 10000
     # waveIndex = 25
-    waveIndex = 8
+    waveIndex = 25
     print 'Choosing percentile examples at wavelength: ', wave[waveIndex]
     def getPercentileIndex(array, percentile):
         '''
@@ -87,7 +89,7 @@ def main():
     # tpcorrps = [np.percentile(tpcorrArray, p, axis=0) for p in sigmas]
 
     tpcorrIndices = [getPercentileIndex(tpcorrArray[:,waveIndex], percentile) for percentile in percentiles]
-    # opt_tpcorrIndices = [getPercentileIndex(opt_tpcorrArray[:,25], percentile) for percentile in percentiles]
+    opt_tpcorrIndices = [getPercentileIndex(opt_tpcorrArray[:,waveIndex], percentile) for percentile in percentiles]
     purps = mpl.cm.ScalarMappable(mpl.colors.Normalize(vmin=0,vmax=1),'Purples')
     purps.to_rgba(1)
 
@@ -151,7 +153,16 @@ def main():
     cbar.solids.set_rasterized(True)
     cbar.solids.set_edgecolor("face")
 
-    #plt.savefig('dalt-dha-scatter.pdf')
+    plt.savefig('dalt-dha-scatter.pdf')
+
+    plt.figure(figsize=(8,6))
+    plt.hist(delta_ha, bins=np.linspace(-45,45,46), alpha=0.5, histtype='stepfilled')
+    plt.xlim(-45,45)
+    plt.ylim(0,250)
+    plt.xlabel(r'$h_{obs} - h_{design}$ (degrees)')
+    plt.ylabel('Observations')
+    plt.grid(True)
+    plt.savefig('dha-dist.pdf')
 
 if __name__ == '__main__':
     main()
