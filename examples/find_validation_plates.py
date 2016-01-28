@@ -60,7 +60,7 @@ def main():
     # on these plates therefore do not require a correction
     bad_chunks = ('boss35','boss36','boss37','boss38')
     bad_chunks_str = ','.join(['"{}"'.format(chunk) for chunk in bad_chunks])
-    dr12b_selection = 'CHUNK not in ({})'.format(bad_chunks_str)
+    dr12b_selection = 'ZWARNING&(1<<7)=0 and CHUNK not in ({})'.format(bad_chunks_str)
 
     # Require targets were on "validation" plates
     validiation_plates_str = ','.join(['{}'.format(plate) for plate in validiation_plates])
