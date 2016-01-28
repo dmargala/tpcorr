@@ -180,8 +180,8 @@ def main():
                     (guided_x - obs.offset_x0_std[:, np.newaxis, np.newaxis])**2 +
                     (guided_y - obs.offset_y0_std[:, np.newaxis, np.newaxis])**2) / obs.pointing.platescale
 
-                exp_grp.create_dataset('offset', data=offset.to(u.arcsec)).value, dtype='f4')
-                exp_grp.create_dataset('offset_std', data=offset_std.to(u.arcsec)).value, dtype='f4')
+                exp_grp.create_dataset('offset', data=offset.to(u.arcsec).value, dtype='f4')
+                exp_grp.create_dataset('offset_std', data=offset_std.to(u.arcsec).value, dtype='f4')
 
             # # Loop over offset fibers
             # for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
