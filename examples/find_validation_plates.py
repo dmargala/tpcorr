@@ -43,12 +43,12 @@ def main():
         'LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CLASS="STAR" and ANCILLARY_TARGET2=1<<20',
     ]
 
-    for name, selection in zip(sam, sample_selections):
+    for name, selection in zip(sample_names, sample_selections):
         print name, selection
 
     print
 
-    for name, selection in zip(sam, sample_selections):
+    for name, selection in zip(sample_names, sample_selections):
         sql_prefix = 'SELECT {} FROM meta'.format(what)
         dr12_sql = sql_prefix + ' WHERE {}'.format(selection)
         dr12b_sql = sql_prefix + ' WHERE {} and CHUNK not in ({})'.format(selection, bad_chunks_str)
