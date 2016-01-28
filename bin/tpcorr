@@ -153,6 +153,7 @@ def main():
             # Create plate
             outfile_grp = outfile.create_group('{}/{}'.format(plate, mjd))
             outfile_grp.attrs['design_ha'] = obs.design_ha.to(u.deg).value
+            outfile_grp.attrs['design_temp'] = obs.design_temp.to(u.deg_C).value
             outfile_grp.attrs['design_alt'] = obs.design_alt.to(u.deg).value
             outfile_grp.attrs['ha'] = np.mean(obs.ha.to(u.deg).value)
             outfile_grp.attrs['alt'] = np.mean(obs.alt.to(u.deg).value)
@@ -161,14 +162,14 @@ def main():
 
             outfile_grp.create_dataset('seeing', data=obs.seeing)
             outfile_grp.create_dataset('fiber_ids', data=obs.fiber_ids)
-            outfile_grp.create_dataset('offset_x0', data=obs.offset_x0)
-            outfile_grp.create_dataset('offset_y0', data=obs.offset_y0)
+            outfile_grp.create_dataset('offset_x0', data=obs.offset_x0.to(u.mm).value)
+            outfile_grp.create_dataset('offset_y0', data=obs.offset_y0.to(u.mm).value)
 
             for exp_index in range(obs.spec_file.num_exposures):
                 exp_grp = outfile_grp.create_group(str(exp_index))
                 guided_x, guided_y = obs.get_exp_centroids(exp_index)
-                exp_grp.create_dataset('guided_x', data=guided_x)
-                exp_grp.create_dataset('guided_y', data=guided_y)
+                exp_grp.create_dataset('guided_x', data=guided_x.to(u.mm).value)
+                exp_grp.create_dataset('guided_y', data=guided_y.to(u.mm).value)
 
             # # Loop over offset fibers
             # for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
