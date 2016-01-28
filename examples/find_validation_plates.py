@@ -34,20 +34,39 @@ def main():
 
     validiation_plates_str = ','.join(['{}'.format(plate) for plate in validiation_plates])
 
-    offset_targets = 'LAMBDA_EFF=4000 and ZWARNING=0'
-    quasars = 'LAMBDA_EFF=4000 and ZWARNING=0 and OBJTYPE="QSO" and CLASS="QSO"'
-    failed_quasars = 'LAMBDA_EFF=4000 and ZWARNING=0 and OBJTYPE="QSO" and CLASS="STAR"'
-    spec_standards = 'LAMBDA_EFF=5400 and ZWARNING=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"'
-    offset_standards = 'LAMBDA_EFF=4000 and ZWARNING=0 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)'
+    sample_names = ['Offset targets', 'Quasars', 'Failed quasars', 'Spec. standards', 'Offset standards']
+    sample_selections = [
+        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0',
+        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and OBJTYPE="QSO" and CLASS="QSO"',
+        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and OBJTYPE="QSO" and CLASS="STAR"',
+        'LAMBDA_EFF=5400 and ZWARNING&1<<7=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
+        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CLASS="STAR" and ANCILLARY_TARGET2=1<<20',
+    ]
 
-    for selection in (offset_targets, quasars, failed_quasars, spec_standards, offset_standards):
-        sql = 'SELECT {} FROM meta'.format(what)
-        offset_targets = 'LAMBDA_EFF=4000 and ZWARNING=0'
-        sql += ' WHERE {} and PLATE in ({})'.format(selection, validiation_plates_str)
-        print sql
-        meta_db.cursor.execute(sql)
+    for name, selection in zip(sam, sample_selections):
+        print name, selection
+
+    print
+
+    for name, selection in zip(sam, sample_selections):
+        sql_prefix = 'SELECT {} FROM meta'.format(what)
+        dr12_sql = sql_prefix + ' WHERE {}'.format(selection)
+        dr12b_sql = sql_prefix + ' WHERE {} and CHUNK not in ({})'.format(selection, bad_chunks_str)
+        valid_sql = sql_prefix + ' WHERE {} and ZWARNING=0 and PLATE in ({})'.format(selection, validiation_plates_str)
+
+        meta_db.cursor.execute(dr12_sql)
         rows = meta_db.cursor.fetchall()
-        print '"{}": {}'.format(selection, len(rows))
+        num_dr12 = len(rows)
+
+        meta_db.cursor.execute(dr12b_sql)
+        rows = meta_db.cursor.fetchall()
+        num_dr12b = len(rows)
+
+        meta_db.cursor.execute(valid_sql)
+        rows = meta_db.cursor.fetchall()
+        num_valid = len(rows)
+
+        print '{}: {}, {}, {}'.format(name, num_dr12, num_dr12b, num_valid)
 
 if __name__ == '__main__':
     main()
