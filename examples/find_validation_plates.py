@@ -26,7 +26,7 @@ def main():
     table_by_obs = table.group_by(['PLATE','MJD'])
 
     # Count number of targets in each spectrograph
-    counts_per_spec = [(grp['PLATE'][0], np.sum(grp['FIBER'] <= 500),np.sum(grp['FIBER'] > 500)) for grp in table_by_obs.groups]
+    counts_per_spec = [(grp['PLATE'][0], np.sum(grp['FIBER'] <= 500), np.sum(grp['FIBER'] > 500)) for grp in table_by_obs.groups]
     at_least_10 = [obs[0] for obs in counts_per_spec if obs[1]+obs[2] >= 10]
     validiation_plates = [obs[0] for obs in counts_per_spec if obs[1] >= 10 and obs[2] >= 10]
 
@@ -47,8 +47,8 @@ def main():
     ]
 
     print '\nTarget sample definitions: '
-    for name, selection in zip(sample_names, sample_selections):
-        print '{}: {}'.format(name, selection)
+    for sample_name, sample_selection in zip(sample_names, sample_selections):
+        print '{}: {}'.format(sample_name, sample_selection)
 
     # Construct category selections
     category_names = ('DR12', 'DR12b', 'Validation')
@@ -69,34 +69,36 @@ def main():
     # Print category definitions
     category_selections = (dr12_selection, dr12b_selection, valid_selection)
     print '\nCategory definitions: '
-    for name, selection in zip(category_names, category_selections):
-        print '{}: {}'.format(name, selection)
+    for category_name, category_selection in zip(category_names, category_selections):
+        print '{}: {}'.format(category_name, category_selection)
 
     # Loop over target samples
     print '\nCounts: '
     sql_prefix = 'SELECT {} FROM meta'.format(what)
+    category_nums = {}
     for sample_name, sample_selection in zip(sample_names, sample_selections):
-        nums = {}
+        sample_nums = {}
         # Loop over sample categories
         for category_name, category_selection in zip(category_names, category_selections):
             # Count the number of targets in this sample+category
             sql = sql_prefix + ' WHERE {} and {}'.format(sample_selection, category_selection)
             meta_db.cursor.execute(sql)
             rows = meta_db.cursor.fetchall()
-            nums[category_name] = len(rows)
+            sample_nums[category_name] = len(rows)
             # For the DR12 offset target sample, save number of obs and plates
-            if name == sample_names[0] and category_name == category_names[0]:
+            if sample_name == sample_names[0]:
                 table = astropy.table.Table(rows=rows, names=what.split(','))
                 table_by_obs = table.group_by(['PLATE','MJD'])
-                num_offset_obs = len(table_by_obs.groups)
                 table_by_plate = table.group_by(['PLATE'])
-                num_offset_plates = len(table_by_plate.groups)
+                category_nums[category_name] = (len(table_by_obs.groups), len(table_by_plate.groups))
         # Print sample summary
-        print '{}: {}'.format(name, ', '.join([str(nums[category_name]) for category_name in category_names]))
+        print '{}: {}'.format(sample_name, ', '.join(
+            [str(sample_nums[category_name]) for category_name in category_names]))
 
     # Print number of obs and plates with offset targets
-    print '\nNumber of obs with offset targets: {}'.format(num_offset_obs)
-    print 'Number of plates with offset targets: {}'.format(num_offset_plates)
+    for category_name in category_names:
+        print '\nNumber of obs (plates) with offset targets in {} category: {} ({})'.format(
+            num_offset_obs, category_nums[category_name][0], category_nums[category_name][1])
 
 if __name__ == '__main__':
     main()
