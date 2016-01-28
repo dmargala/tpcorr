@@ -168,8 +168,20 @@ def main():
             for exp_index in range(obs.spec_file.num_exposures):
                 exp_grp = outfile_grp.create_group(str(exp_index))
                 guided_x, guided_y = obs.get_exp_centroids(exp_index)
-                exp_grp.create_dataset('guided_x', data=guided_x.to(u.mm).value)
-                exp_grp.create_dataset('guided_y', data=guided_y.to(u.mm).value)
+
+                # Calculate centroid offsets for each offset target, relative to its nominal fiber center.
+                offset = np.sqrt(
+                    (guided_x - obs.offset_x0[:, np.newaxis, np.newaxis])**2 +
+                    (guided_y - obs.offset_y0[:, np.newaxis, np.newaxis])**2) / obs.pointing.platescale
+                
+                # Calculate centroid offsets for each offset target, relative to where its fiber center would
+                # be if it were designed for the same wavelength as the standard stars.
+                offset_std = np.sqrt(
+                    (guided_x - obs.offset_x0_std[:, np.newaxis, np.newaxis])**2 +
+                    (guided_y - obs.offset_y0_std[:, np.newaxis, np.newaxis])**2) / obs.pointing.platescale
+
+                exp_grp.create_dataset('offset', data=offset.to(u.arcsec)).value, dtype='f4')
+                exp_grp.create_dataset('offset_std', data=offset_std.to(u.arcsec)).value, dtype='f4')
 
             # # Loop over offset fibers
             # for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
