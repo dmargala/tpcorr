@@ -27,7 +27,7 @@ def main():
 
 	# LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CHUNK not in ('boss35','boss36','boss37','boss38')
 
-	validiation_plates_str = ','.join(['{}'.format(plate) for palte in validiation_plates])
+	validiation_plates_str = ','.join(['{}'.format(plate) for plate in validiation_plates])
 
 	meta_db.cursor.execute('SELECT PLATE,MJD,FIBER FROM meta WHERE LAMBDA_EFF=4000 and ZWARNING=0 and PLATE in ({})'.format(
 		validiation_plates_str))
