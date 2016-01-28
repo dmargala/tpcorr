@@ -96,9 +96,9 @@ def main():
             [str(sample_nums[category_name]) for category_name in category_names]))
 
     # Print number of obs and plates with offset targets
+    print '\nNumber observation (unique plate) with offset targets summary:'
     for category_name in category_names:
-        print 'Number of observations (unique plates) with offset targets in {} category: {} ({})'.format(
-            category_name, category_nums[category_name][0], category_nums[category_name][1])
+        print '{}: {} ({})'.format(category_name, category_nums[category_name][0], category_nums[category_name][1])
 
 if __name__ == '__main__':
     main()
