@@ -52,13 +52,13 @@ class Observation(object):
         self.pointing = tpcorr.pointing.Pointing(ra_center, dec_center)
         
         # Find the nominal observing temperature and time that this plate's holes are drilled for.
-        design_temp = float(plug_map['temp'])*u.deg_C
+        self.design_temp = float(plug_map['temp'])*u.deg_C
         design_pressure = None # Calculate based on elevation and temperature
         self.design_ha = float(plug_map['ha'].split()[pointing_index]) * u.deg
         midnight = astropy.time.Time(mjd, format='mjd', scale='tai', location=self.pointing.where)
         design_time = specsim.transform.adjust_time_to_hour_angle(midnight, ra_center, self.design_ha, max_iterations=100)
         self.design_tai = design_time.mjd * 86400.
-        print 'Holes drilled for T={:.1f} and HA={:.1f} (TAI={:.1f})'.format(design_temp, self.design_ha, self.design_tai)
+        print 'Holes drilled for T={:.1f} and HA={:.1f} (TAI={:.1f})'.format(self.design_temp, self.design_ha, self.design_tai)
         
         # design_time.mjd
         # when = astropy.time.Time(tai/86400., format='mjd', scale='tai', location=self.where)
@@ -74,7 +74,7 @@ class Observation(object):
         
         # Calculate the nominal guide fiber positions.
         self.guide_x0, self.guide_y0, _, _ = self.pointing.transform(
-            self.guide_targets, self.design_tai, guide_wlen, design_temp, design_pressure)
+            self.guide_targets, self.design_tai, guide_wlen, self.design_temp, design_pressure)
         
         # Find this plate's offset fibers. We have to use spAll for this since the plug map does
         # not record the design wavelengths.
@@ -96,12 +96,12 @@ class Observation(object):
             # close (within ~0.2 arcsec) and we only use offsets calculated consistently with
             # transform() in the following.
             self.offset_x0, self.offset_y0, offset_alt, offset_az = self.pointing.transform(
-                self.offset_targets, self.design_tai, offset_wlen, design_temp, design_pressure)
+                self.offset_targets, self.design_tai, offset_wlen, self.design_temp, design_pressure)
         
             # Calculate where the offset target fibers would have been positioned if they were
             # designed for the same wavelength as the standard stars.
             self.offset_x0_std, self.offset_y0_std, _, _ = self.pointing.transform(
-                self.offset_targets, self.design_tai, std_wlen, design_temp, design_pressure)
+                self.offset_targets, self.design_tai, std_wlen, self.design_temp, design_pressure)
         
         # Initialize the wavelength grid to use for calculating corrections.
         self.wlen_grid = np.linspace(3500., 10500., wlen_grid_steps)[:, np.newaxis] * u.Angstrom
