@@ -25,7 +25,7 @@ def main():
 
 	bad_chunks = ('boss35','boss36','boss37','boss38')
 
-	LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CHUNK not in ('boss35','boss36','boss37','boss38')
+	# LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CHUNK not in ('boss35','boss36','boss37','boss38')
 
 	validiation_plates_str = ','.join(['{}'.format(plate) for palte in validiation_plates])
 
