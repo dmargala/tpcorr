@@ -31,10 +31,10 @@ def main():
     validiation_plates = [obs[0] for obs in counts_per_spec if obs[1] >= 10 and obs[2] >= 10]
 
     # Print summary
-    print 'Number of observations with ancillary targets:', len(counts_per_spec)
-    print 'Number of observations with at least 10 ancillary targets: ', len(at_least_10)
-    print 'Number of observations with at least 10 ancillary targets per spectrograph:', len(validiation_plates)
-    print 'Validation plates:', validiation_plates
+    print 'Number of observations with ancillary targets: {}'.format(len(counts_per_spec))
+    print 'Number of observations with at least 10 ancillary targets: {}'.format(len(at_least_10))
+    print 'Number of observations with at least 10 ancillary targets per spectrograph: {}'.format(len(validiation_plates))
+    print 'Validation plates: {}'.format(validiation_plates)
 
     # Summarize various target sample selections used in paper
     sample_names = ['Offset targets', 'Quasars', 'Failed quasars', 'Spec. standards', 'Offset standards']
@@ -92,7 +92,7 @@ def main():
                 table_by_plate = table.group_by(['PLATE'])
                 num_offset_plates = len(table_by_plate.groups)
         # Print sample summary
-        print '{}: {}'.format(name, ', '.join([nums[category_name] for category_name in category_names]))
+        print '{}: {}'.format(name, ', '.join([str(nums[category_name]) for category_name in category_names]))
 
     # Print number of obs and plates with offset targets
     print '\nNumber of obs with offset targets: {}'.format(num_offset_obs)
