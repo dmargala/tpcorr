@@ -11,7 +11,7 @@ def main():
     meta_db = bossdata.meta.Database(lite=False, verbose=True)
 
     what = 'PLATE,MJD,FIBER'
-    where = '((ANCILLARY_TARGET2&(1<<20))>0)'
+    where = 'ANCILLARY_TARGET2&(1<<20)=0'
     sql = 'SELECT {} FROM meta WHERE {}'.format(what, where)
     meta_db.cursor.execute(sql)
     rows = meta_db.cursor.fetchall()
@@ -36,27 +36,31 @@ def main():
 
     sample_names = ['Offset targets', 'Quasars', 'Failed quasars', 'Spec. standards', 'Offset standards']
     sample_selections = [
-        'LAMBDA_EFF=4000 and (ZWARNING&(1<<7))=0',
-        'LAMBDA_EFF=4000 and (ZWARNING&(1<<7))=0 and OBJTYPE="QSO" and CLASS="QSO"',
-        'LAMBDA_EFF=4000 and (ZWARNING&(1<<7))=0 and OBJTYPE="QSO" and CLASS="STAR"',
-        'LAMBDA_EFF=5400 and (ZWARNING&(1<<7))=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
-        'LAMBDA_EFF=4000 and (ZWARNING&(1<<7))=0 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)',
+        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0',
+        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0 and OBJTYPE="QSO" and CLASS="QSO"',
+        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0 and OBJTYPE="QSO" and CLASS="STAR"',
+        'LAMBDA_EFF=5400 and ZWARNING&(1<<7)=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
+        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)',
     ]
 
+    print '\nTarget sample definitions: '
+
     for name, selection in zip(sample_names, sample_selections):
-        print name, selection
+        print '{}: {}'.format(name, selection)
 
-    print
-
+    dr12_sql_postfix = 'ZWARNING&(1<<7)=0'
     dr12b_sql_postfix = 'CHUNK not in ({})'.format(bad_chunks_str)
     valid_sql_postfix = 'ZWARNING=0 and PLATE in ({})'.format(validiation_plates_str)
 
+    print '\nAdditional definitions: '
+    print 'DR12: {}'.format(dr12_sql_postfix)
     print 'DR12b: {}'.format(dr12b_sql_postfix)
-    print 'validation: {}'.format(valid_sql_postfix)
+    print 'Validation: {}'.format(valid_sql_postfix)
 
+    print '\nCounts: '
     for name, selection in zip(sample_names, sample_selections):
         sql_prefix = 'SELECT {} FROM meta'.format(what)
-        dr12_sql = sql_prefix + ' WHERE {}'.format(selection)
+        dr12_sql = sql_prefix + ' WHERE {} and {}'.format(selection, dr12_sql_postfix)
         dr12b_sql = sql_prefix + ' WHERE {} and {}'.format(selection, dr12b_sql_postfix)
         valid_sql = sql_prefix + ' WHERE {} and {}'.format(selection, valid_sql_postfix)
 
