@@ -36,11 +36,11 @@ def main():
 
     sample_names = ['Offset targets', 'Quasars', 'Failed quasars', 'Spec. standards', 'Offset standards']
     sample_selections = [
-        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0',
-        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and OBJTYPE="QSO" and CLASS="QSO"',
-        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and OBJTYPE="QSO" and CLASS="STAR"',
-        'LAMBDA_EFF=5400 and ZWARNING&1<<7=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
-        'LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CLASS="STAR" and ANCILLARY_TARGET2=1<<20',
+        'LAMBDA_EFF=4000 and (ZWARNING&1<<7)=0',
+        'LAMBDA_EFF=4000 and (ZWARNING&1<<7)=0 and OBJTYPE="QSO" and CLASS="QSO"',
+        'LAMBDA_EFF=4000 and (ZWARNING&1<<7)=0 and OBJTYPE="QSO" and CLASS="STAR"',
+        'LAMBDA_EFF=5400 and (ZWARNING&1<<7)=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
+        'LAMBDA_EFF=4000 and (ZWARNING&1<<7)=0 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)',
     ]
 
     for name, selection in zip(sample_names, sample_selections):
