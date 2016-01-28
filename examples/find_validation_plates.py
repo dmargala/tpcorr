@@ -36,11 +36,11 @@ def main():
 
     sample_names = ['Offset targets', 'Quasars', 'Failed quasars', 'Spec. standards', 'Offset standards']
     sample_selections = [
-        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0',
-        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0 and OBJTYPE="QSO" and CLASS="QSO"',
-        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0 and OBJTYPE="QSO" and CLASS="STAR"',
-        'LAMBDA_EFF=5400 and ZWARNING&(1<<7)=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
-        'LAMBDA_EFF=4000 and ZWARNING&(1<<7)=0 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)',
+        'LAMBDA_EFF=4000',
+        'LAMBDA_EFF=4000 and OBJTYPE="QSO" and CLASS="QSO"',
+        'LAMBDA_EFF=4000 and OBJTYPE="QSO" and CLASS="STAR"',
+        'LAMBDA_EFF=5400 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
+        'LAMBDA_EFF=4000 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)',
     ]
 
     print '\nTarget sample definitions: '
@@ -68,6 +68,13 @@ def main():
         rows = meta_db.cursor.fetchall()
         num_dr12 = len(rows)
 
+        if name == sample_names[0]:
+            table = astropy.table.Table(rows=rows, names=what.split(','))
+            table_by_obs = table.group_by(['PLATE','MJD'])
+            num_offset_obs = len(table_by_obs.groups)
+            table_by_plate = table.group_by(['PLATE'])
+            num_offset_plates = len(table_by_plate.groups)
+
         meta_db.cursor.execute(dr12b_sql)
         rows = meta_db.cursor.fetchall()
         num_dr12b = len(rows)
@@ -77,6 +84,9 @@ def main():
         num_valid = len(rows)
 
         print '{}: {}, {}, {}'.format(name, num_dr12, num_dr12b, num_valid)
+
+    print 'Number of obs with offset targets: {}'.format(num_offset_obs)
+    print 'Number of plates with offset targets: {}'.format(num_offset_plates)
 
 if __name__ == '__main__':
     main()
