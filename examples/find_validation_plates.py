@@ -14,7 +14,7 @@ def main():
 	table = astropy.table.Table(rows=rows, names=['PLATE','MJD','FIBER'])
 	table_by_obs = table.group_by(['PLATE','MJD'])
 
-	counts_per_spec = [(grp['PLATE'][0], np.sum(grp['FIBER'] <= 500),np.sum(grp['FIBER'] > 500)) for grp in by_plate.groups]
+	counts_per_spec = [(grp['PLATE'][0], np.sum(grp['FIBER'] <= 500),np.sum(grp['FIBER'] > 500)) for grp in table_by_obs.groups]
 	at_least_10 = [obs[0] for obs in counts_per_spec if obs[1]+obs[2] >= 10]
 	validiation_plates = [obs[0] for obs in counts_per_spec if obs[1] >= 10 and obs[2] >= 10]
 
