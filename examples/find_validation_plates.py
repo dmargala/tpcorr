@@ -28,24 +28,24 @@ def main():
     print 'Validation plates:', validiation_plates
 
     bad_chunks = ('boss35','boss36','boss37','boss38')
-    bad_chunks_str = ','.join(['`{}`'.format(chunk) for chunk in bad_chunks])
+    bad_chunks_str = ','.join(['"{}"'.format(chunk) for chunk in bad_chunks])
 
     # LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CHUNK not in ('boss35','boss36','boss37','boss38')
 
     validiation_plates_str = ','.join(['{}'.format(plate) for plate in validiation_plates])
 
     offset_targets = 'LAMBDA_EFF=4000 and ZWARNING=0'
-    quasars = 'LAMBDA_EFF=4000 and ZWARNING=0 and OBJTYPE=`QSO` and CLASS=`QSO`'
-    failed_quasars = 'LAMBDA_EFF=4000 and ZWARNING=0 and OBJTYPE=`QSO` and CLASS=`STAR`'
-    spec_standards = 'LAMBDA_EFF=5400 and ZWARNING=0 and OBJTYPE=`SPECTROPHOTO_STD` and CLASS=`STAR`'
-    offset_standards = 'LAMBDA_EFF=4000 and ZWARNING=0 and CLASS=`STAR` and ((ANCILLARY_TARGET2&(1<<20))>0)'
+    quasars = 'LAMBDA_EFF=4000 and ZWARNING=0 and OBJTYPE="QSO" and CLASS="QSO"'
+    failed_quasars = 'LAMBDA_EFF=4000 and ZWARNING=0 and OBJTYPE="QSO" and CLASS="STAR"'
+    spec_standards = 'LAMBDA_EFF=5400 and ZWARNING=0 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"'
+    offset_standards = 'LAMBDA_EFF=4000 and ZWARNING=0 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)'
 
     for selection in (offset_targets, quasars, failed_quasars, spec_standards, offset_standards):
         sql = 'SELECT {} FROM meta'.format(what)
         offset_targets = 'LAMBDA_EFF=4000 and ZWARNING=0'
-        sql += ' WHERE {} and PLATE in {}'.format(selection, validiation_plates_str)
-        meta_db.cursor.execute('SELECT PLATE,MJD,FIBER FROM meta WHERE LAMBDA_EFF=4000 and ZWARNING=0 and PLATE in ({})'.format(
-            validiation_plates_str))
+        sql += ' WHERE {} and PLATE in ({})'.format(selection, validiation_plates_str)
+        print sql
+        meta_db.cursor.execute(sql)
         rows = meta_db.cursor.fetchall()
         print '"{}": {}'.format(selection, len(rows))
 
