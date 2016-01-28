@@ -11,7 +11,7 @@ def main():
     meta_db = bossdata.meta.Database(lite=False, verbose=True)
 
     what = 'PLATE,MJD,FIBER'
-    where = 'ANCILLARY_TARGET2&(1<<20)=0'
+    where = 'ANCILLARY_TARGET2&(1<<20)!=0'
     sql = 'SELECT {} FROM meta WHERE {}'.format(what, where)
     meta_db.cursor.execute(sql)
     rows = meta_db.cursor.fetchall()
