@@ -48,7 +48,7 @@ def main():
     parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('-p', '--plate', type=int, default=None,
         help='plate id')
-    parser.add_argument('-m', '--mjd', type=str, default=None,
+    parser.add_argument('-m', '--mjd', type=int, default=None,
         help='observation mjd')
     parser.add_argument('--output', type=str, default=None,
         help='output filename')

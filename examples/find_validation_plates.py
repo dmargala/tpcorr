@@ -23,5 +23,16 @@ def main():
 	print 'Number of observations with at least 10 ancillary targets per spectrograph:', len(validiation_plates)
 	print 'Validation plates:', validiation_plates
 
+	bad_chunks = ('boss35','boss36','boss37','boss38')
+
+	LAMBDA_EFF=4000 and ZWARNING&1<<7=0 and CHUNK not in ('boss35','boss36','boss37','boss38')
+
+	validiation_plates_str = ','.join(['{}'.format(plate) for palte in validiation_plates])
+
+	meta_db.cursor.execute('SELECT PLATE,MJD,FIBER FROM meta WHERE LAMBDA_EFF=4000 and ZWARNING=0 and PLATE in ({})'.format(
+		validiation_plates_str))
+	rows = meta_db.cursor.fetchall()
+	print 'Number of observations with offset target on validation plates:', len(rows)
+
 if __name__ == '__main__':
 	main()
