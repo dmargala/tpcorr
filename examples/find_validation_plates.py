@@ -69,7 +69,7 @@ def main():
     # Print category definitions
     category_selections = (dr12_selection, dr12b_selection, valid_selection)
     print '\nCategory definitions: '
-    for name, selection in zip(category_names, category_selections)
+    for name, selection in zip(category_names, category_selections):
         print '{}: {}'.format(name, selection)
 
     # Loop over target samples
