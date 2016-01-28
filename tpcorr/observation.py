@@ -17,7 +17,8 @@ import tpcorr.acceptance_model
 
 class Observation(object):
     def __init__(self, plate, mjd, guide_wlen=5400 * u.Angstrom, offset_wlen=4000 * u.Angstrom,
-        std_wlen=5400 * u.Angstrom, wlen_grid_steps=15, steps_per_exposure=5):
+        std_wlen=5400 * u.Angstrom, wlen_grid_steps=15, steps_per_exposure=5,
+        pressure0=None, temperature0=None):
         print 'Calculating corrections for {} observed on MJD {}'.format(plate, mjd)
 
         self.plate = plate
@@ -117,10 +118,10 @@ class Observation(object):
         self.tai_end = np.empty((self.spec_file.num_exposures)) # seconds
         self.alt = np.empty((self.spec_file.num_exposures)) * u.degree
 
-        self.init_exposure_meta(temperature0=design_temp)
+        self.init_exposure_meta(pressure=pressure0, temperature=temperature0)
 
 
-    def init_exposure_meta(self, seeing0=1.49 * u.arcsec, pressure0=79.3 * u.kPa, temperature0=5 * u.deg_C):
+    def init_exposure_meta(self, seeing=None, pressure=None, temperature=None):
         # Precompute the conversion from inches of Hg to kPa.
         pconv = (1 * u.cds.mmHg * u.imperial.inch / u.mm).to(u.kPa).value
 
@@ -142,22 +143,32 @@ class Observation(object):
             self.ha[exp_index] = tpcorr.pointing.normalize_angle(
                 self.pointing.hour_angle(tai_mid).to(u.deg).value)*u.deg
             
-            if b1_frame.header['SEEING50'] == 0:
-                print 'Warning: SEEING50=0, using nominal value.'
-                self.seeing[exp_index] = seeing0
+            if seeing is not None:
+                self.seeing[exp_index] = seeing
             else:
-                self.seeing[exp_index] = b1_frame.header['SEEING50'] * u.arcsec
+                if b1_frame.header['SEEING50'] == 0:
+                    self.seeing[exp_index] = 1.49 * u.arcsec
+                    print 'Warning: SEEING50=0. Using nominal value: ', self.seeing[exp_index]
+                else:
+                    self.seeing[exp_index] = b1_frame.header['SEEING50'] * u.arcsec
 
-            try:
-                self.temperature[exp_index] = b1_frame.header['AIRTEMP'] * u.deg_C
-            except ValueError, e:
-                print 'Warning: AIRTEMP not found, using nominal value:', e
-                self.temperature[exp_index] = temperature0
-            try:
-                self.pressure[exp_index] = b1_frame.header['PRESSURE'] * pconv * u.kPa
-            except ValueError, e:
-                print 'Warning: PRESSURE not found, using nominal value.', e
-                self.pressure[exp_index] = pressure0
+            if temperature is not None:
+                self.temperature[exp_index] = temperature
+            else:
+                try:
+                    self.temperature[exp_index] = b1_frame.header['AIRTEMP'] * u.deg_C
+                except ValueError, e:
+                    self.temperature[exp_index] = 5 * u.deg_C
+                    print 'Warning: AIRTEMP not available in exp header. Using nominal value: ', self.temperature[exp_index]
+
+            if pressure is not None:
+                self.pressure[exp_index] = pressure
+            else:
+                try:
+                    self.pressure[exp_index] = b1_frame.header['PRESSURE'] * pconv * u.kPa
+                except ValueError, e:
+                    self.pressure[exp_index] = 71.890 * u.kPa
+                    print 'Warning: PRESSURE not available in exp header. Using nominal value: ', self.pressure[exp_index]
 
             obstime = astropy.time.Time(tai_mid/86400., format='mjd', scale='tai', location=self.pointing.where)
             self.alt[exp_index] = self.pointing.plate_center.transform_to(astropy.coordinates.AltAz(
