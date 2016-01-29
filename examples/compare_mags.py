@@ -154,6 +154,14 @@ def main():
             spectrum = specsim.spectrum.SpectralFluxDensity(wlen, flux)
             syn_mag = spectrum.getABMagnitudes()
 
+            missing_syn_mag = False
+            for band in bands:
+                if syn_mag[band] == None:
+                    missing_syn_mag = True
+
+            if missing_syn_mag:
+                continue
+                
             imaging_grid[i,0] = (corrected_sdss_mags['g']-corrected_sdss_mags['r'])
             imaging_grid[i,1] = (corrected_sdss_mags['r']-corrected_sdss_mags['i'])
             imaging_grid[i,2] = corrected_sdss_mags['g']
