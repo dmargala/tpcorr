@@ -36,9 +36,9 @@ def main():
         help='throughput correction filename, required')
     parser.add_argument('--output', type=str, default=None,
         help='output filename')
-    parser.add_argument('--blue-path', type=str, default='/sas/dr12/boss'
+    parser.add_argument('--blue-path', type=str, default='/sas/dr12/boss',
         help='path to blue reduction')
-    parser.add_argument('--blue-version', type=str, default='test'
+    parser.add_argument('--blue-version', type=str, default='test',
         help='blue reduction version')
     args = parser.parse_args()
 
