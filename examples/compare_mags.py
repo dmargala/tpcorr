@@ -134,7 +134,7 @@ def main():
 
                 dr12_plate_name = dr12_finder.get_plate_spec_path(plate, mjd)
                 dr12_plate = bossdata.plate.PlateFile(mirror.get(dr12_plate_name))
-                data = dr12_plate.get_valid_data([fiber], use_ivar=True)
+                data = dr12_plate.get_valid_data(np.array([fiber]), use_ivar=True)
                 wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
 
             if name[:4] == 'Corr':
