@@ -16,6 +16,19 @@ import bossdata
 
 import specsim
 
+def mad(arr):
+    """
+    Median Absolute Deviation: a "Robust" version of standard deviation.
+        Indices variabililty of the sample.
+        https://en.wikipedia.org/wiki/Median_absolute_deviation 
+    """
+    # arr = np.ma.array(arr).compressed() # should be faster to not use masked arrays.
+    med = np.ma.median(arr, axis=0)
+    return np.ma.median(np.ma.abs(arr - med), axis=0)
+
+def nmad(arr):
+    return 1.4826*mad(arr)
+
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -28,24 +41,7 @@ def main():
     # Open connection spAll db
     meta_db = bossdata.meta.Database(lite=False, verbose=True)
 
-    # Find the plates used for "validation", the plates with at least 10 offset standards
-    # in each spectro graph.
-
-    # Select offset standards via ancillary target flag
-    where = 'ANCILLARY_TARGET2&(1<<20)!=0'
-    what = 'PLATE,MJD,FIBER,PSFMAG_1,PSFMAG_2,PSFMAG_3'
-    sql = 'SELECT {} FROM meta WHERE {}'.format(what, where)
-    meta_db.cursor.execute(sql)
-    rows = meta_db.cursor.fetchall()
-    table = astropy.table.Table(rows=rows, names=what.split(','))
-
-    # Group by observations
-    table_by_obs = table.group_by(['PLATE','MJD'])
-
-    # Count number of targets in each spectrograph
-    counts_per_spec = [(grp['PLATE'][0], np.sum(grp['FIBER'] <= 500), np.sum(grp['FIBER'] > 500)) for grp in table_by_obs.groups]
-    at_least_10 = [obs[0] for obs in counts_per_spec if obs[1]+obs[2] >= 10]
-    validiation_plates = [obs[0] for obs in counts_per_spec if obs[1] >= 10 and obs[2] >= 10]
+    validiation_plates = (6130,6131,6135,6136,6147,6155,6157,6290,6293,6296,6297,6298,6307,6506,6509,6590,6681,6734,6816,6986)
 
     # Summarize various target sample selections used in paper
     sample_names = ['Failed quasars', 'Spec. standards', 'Offset standards']
@@ -60,6 +56,7 @@ def main():
     valid_selection = 'ZWARNING=0 and PLATE in ({})'.format(validiation_plates_str)
     
     # Loop over target samples
+    what = 'PLATE,MJD,FIBER,PSFMAG_1,PSFMAG_2,PSFMAG_3'
     sql_prefix = 'SELECT {} FROM meta'.format(what)
     target_lists = []
     for sample_name, sample_selection in zip(sample_names, sample_selections):
@@ -80,20 +77,82 @@ def main():
     blue_finder = bossdata.path.Finder(sas_path='/sas/dr12/boss', redux_version='test')
     mirror = bossdata.remote.Manager()
 
-    corrections = [0.036, 0.015, 0.013]
 
-    for name, target_list in zip(sample_names, target_lists):
-        for plate,mjd,fiber,psf1,psf2,psf3 in target_list:
+    bands = ['g','r','i']
+    ab_minus_sdss = {'g':0.036, 'r':0.015, 'i':0.013}
+    # ab_minus_sdss = {'g':0.012, 'r':0.010, 'i':0.028}
 
-            dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
-            dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
+    final_sample_names = [sample_names[1], sample_names[2], 'Corr. offset standards', 
+        'Spec. offset standards', sample_names[0], 'Corr. failed quasars']
+    final_target_list_indices = [1,2,2,2,0,0]
 
-            data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
-            wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
+    for name, target_list_index in zip(final_sample_names, final_target_list_indices):
+
+        imaging_grid = np.empty((len(target_lists[target_list_index]),5))
+        syn_grid = np.empty_like(imaging_grid)
+
+        for i,target in enumerate(target_lists[target_list_index]):
+
+            plate,mjd,fiber,psf1,psf2,psf3 = target
+
+            sdss_mags = {'g':psf1, 'r':psf2, 'i':psf3}
+            corrected_sdss_mags = {band: ab_minus_sdss[band] + sdss_mags[band] for band in bands}
+
+            if name == 'Spec. offset standards':
+                spplate_filename = blue_finder.get_plate_spec_path(plate, mjd)
+                try:
+                    spplate = fits.open(mirror.get(spplate_filename, timeout=None))
+                except IOError:
+                    raise IOError('Error opening spPlate file: %s' % spplate_filename)
+
+                flux = spplate[0].data[fiber-1]
+                ivar = spplate[1].data[fiber-1]
+                and_mask = spplate[2].data[fiber-1]
+
+                coeff0 = spplate[0].header['COEFF0']
+                coeff1 = spplate[0].header['COEFF1']
+                loglam = coeff0 + coeff1*np.arange(0, len(flux))
+                wlen = 10**loglam
+
+            else:
+                dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
+                dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
+                data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
+                wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
+
+            if name[:4] == 'Corr':
+                # Load this target's correction
+                correction = tpcorr['{}/{}/{}'.format(plate,mjd,fiber)].value
+                # Create an interpolated correction function
+                correction_interp = scipy.interpolate.interp1d(tpcorr_wave, correction, kind='linear', 
+                    bounds_error=False, fill_value=np.ma.masked)
+                # Sample the interpolated correction using the observation's wavelength grid
+                resampled_correction = correction_interp(wlen)
+                # Apply the correction to the observed flux and ivar
+                flux *= resampled_correction
+                ivar /= (resampled_correction**2)
 
             spectrum = specsim.spectrum.SpectralFluxDensity(wlen, flux)
-            print psf1,psf2,psf3, spectrum.getABMagnitudes()
+            syn_mag = spectrum.getABMagnitudes()
 
+            imaging_grid[i,0] = (corrected_sdss_mags['g']-corrected_sdss_mags['r'])
+            imaging_grid[i,1] = (corrected_sdss_mags['r']-corrected_sdss_mags['i'])
+            imaging_grid[i,2] = corrected_sdss_mags['g']
+            imaging_grid[i,3] = corrected_sdss_mags['r']
+            imaging_grid[i,4] = corrected_sdss_mags['i']
+
+            syn_grid[i,0] = (syn_mag['g']-syn_mag['r'])
+            syn_grid[i,1] = (syn_mag['r']-syn_mag['i'])
+            syn_grid[i,2] = syn_mag['g']
+            syn_grid[i,3] = syn_mag['r']
+            syn_grid[i,4] = syn_mag['i']
+
+        delta_mean = np.mean(syn_grid - imaging_grid, axis=0)
+        delta_disp = nmad(syn_grid - imaging_grid)
+        
+        summary = '   '.join(['{: .3f} {: .3f}'.format(mean, disp) for mean, disp in zip(delta_mean, delta_disp)])
+
+        print '{:<25}: {}'.format(name, summary)
 
 if __name__ == '__main__':
     main()
