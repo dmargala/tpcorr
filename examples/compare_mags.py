@@ -36,6 +36,10 @@ def main():
         help='throughput correction filename, required')
     parser.add_argument('--output', type=str, default=None,
         help='output filename')
+    parser.add_argument('--blue-path', type=str, default='/sas/dr12/boss'
+        help='path to blue reduction')
+    parser.add_argument('--blue-version', type=str, default='test'
+        help='blue reduction version')
     args = parser.parse_args()
 
     # Open connection spAll db
@@ -83,7 +87,7 @@ def main():
     tpcorr_wave = tpcorr['wave'].value
 
     dr12_finder = bossdata.path.Finder(sas_path='/sas/dr12/boss', redux_version='v5_7_0')
-    blue_finder = bossdata.path.Finder(sas_path='/sas/dr12/boss', redux_version='test')
+    blue_finder = bossdata.path.Finder(sas_path=args.blue_path, redux_version=args.blue_version)
     mirror = bossdata.remote.Manager()
 
 
@@ -110,7 +114,7 @@ def main():
             if name == 'Spec. offset standards':
                 spplate_filename = blue_finder.get_plate_spec_path(plate, mjd)
                 try:
-                    spplate = fits.open(mirror.get(spplate_filename, timeout=None))
+                    spplate = fits.open(mirror.get(spplate_filename))
                 except IOError:
                     raise IOError('Error opening spPlate file: %s' % spplate_filename)
 
@@ -124,9 +128,13 @@ def main():
                 wlen = 10**loglam
 
             else:
-                dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
-                dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
-                data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
+                # dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
+                # dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
+                # data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
+
+                dr12_plate_name = dr12_finder.get_plate_spec_path(plate, mjd)
+                dr12_plate = bossdata.plate.PlateFile(mirror.get(dr12_plate_name))
+                data = dr12_plate.get_valid_data([fiber], use_ivar=True)
                 wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
 
             if name[:4] == 'Corr':
