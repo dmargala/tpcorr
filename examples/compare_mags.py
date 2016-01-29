@@ -44,16 +44,23 @@ def main():
     validiation_plates = (6130,6131,6135,6136,6147,6155,6157,6290,6293,6296,6297,6298,6307,6506,6509,6590,6681,6734,6816,6986)
 
     # Summarize various target sample selections used in paper
-    sample_names = ['Failed quasars', 'Spec. standards', 'Offset standards']
+    sample_names = ['Failed quasars', 'Spec. standards', 'Offset standards', 
+        'Failed quasars 2', 'Offset standards 2']
     sample_selections = [
         'LAMBDA_EFF=4000 and OBJTYPE="QSO" and CLASS="STAR"',
         'LAMBDA_EFF=5400 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
         'LAMBDA_EFF=4000 and CLASS="STAR" and ANCILLARY_TARGET2=(1<<20)',
+        'LAMBDA_EFF=4000 and OBJTYPE="QSO" and CLASS="STAR"',
+        'LAMBDA_EFF=4000 and OBJTYPE="SPECTROPHOTO_STD" and CLASS="STAR"',
     ]
 
     # Require targets were on "validation" plates
     validiation_plates_str = ','.join(['{}'.format(plate) for plate in validiation_plates])
     valid_selection = 'ZWARNING=0 and PLATE in ({})'.format(validiation_plates_str)
+
+    bad_chunks = ('boss35','boss36','boss37','boss38')
+    bad_chunks_str = ','.join(['"{}"'.format(chunk) for chunk in bad_chunks])
+    valid2_selection = 'ZWARNING=0 and CHUNK in ({})'.format(bad_chunks_str)
     
     # Loop over target samples
     what = 'PLATE,MJD,FIBER,PSFMAG_1,PSFMAG_2,PSFMAG_3'
@@ -61,9 +68,11 @@ def main():
     target_lists = []
     for sample_name, sample_selection in zip(sample_names, sample_selections):
         sample_nums = {}
-        
         # Count the number of targets in this sample+category
-        sql = sql_prefix + ' WHERE {} and {}'.format(sample_selection, valid_selection)
+        if '2' in sample_name:
+            sql = sql_prefix + ' WHERE {} and {}'.format(sample_selection, valid2_selection)
+        else:
+            sql = sql_prefix + ' WHERE {} and {}'.format(sample_selection, valid_selection)
         meta_db.cursor.execute(sql)
         rows = meta_db.cursor.fetchall()
         print len(rows)
@@ -83,8 +92,8 @@ def main():
     # ab_minus_sdss = {'g':0.012, 'r':0.010, 'i':0.028}
 
     final_sample_names = [sample_names[1], sample_names[2], 'Corr. offset standards', 
-        'Spec. offset standards', sample_names[0], 'Corr. failed quasars']
-    final_target_list_indices = [1,2,2,2,0,0]
+        'Spec. offset standards', sample_names[0], 'Corr. failed quasars', sample_names[3], sample_names[4]]
+    final_target_list_indices = [1,2,2,2,0,0,3,4]
 
     for name, target_list_index in zip(final_sample_names, final_target_list_indices):
 
