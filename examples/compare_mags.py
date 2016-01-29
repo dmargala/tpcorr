@@ -104,6 +104,11 @@ def main():
         imaging_grid = np.empty((len(target_lists[target_list_index]),5))
         syn_grid = np.empty_like(imaging_grid)
 
+        # table = astropy.table.Table(rows=target_lists[target_list_index], names=what.split(','))
+        # dr12_plate_name = dr12_finder.get_plate_spec_path(plate, mjd)
+        # dr12_plate = bossdata.plate.PlateFile(mirror.get(dr12_plate_name))
+        # data = dr12_plate.get_valid_data(np.array([fiber]), use_ivar=True)
+
         for i,target in enumerate(target_lists[target_list_index]):
 
             plate,mjd,fiber,psf1,psf2,psf3 = target
@@ -128,14 +133,11 @@ def main():
                 wlen = 10**loglam
 
             else:
-                # dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
-                # dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
-                # data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
-
-                dr12_plate_name = dr12_finder.get_plate_spec_path(plate, mjd)
-                dr12_plate = bossdata.plate.PlateFile(mirror.get(dr12_plate_name))
-                data = dr12_plate.get_valid_data(np.array([fiber]), use_ivar=True)
+                dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
+                dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
+                data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
                 wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
+
 
             if name[:4] == 'Corr':
                 # Load this target's correction
