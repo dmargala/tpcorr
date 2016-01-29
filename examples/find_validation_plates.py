@@ -51,7 +51,7 @@ def main():
         print '{}: {}'.format(sample_name, sample_selection)
 
     # Construct category selections
-    category_names = ('DR12', 'DR12b', 'Validation')
+    category_names = ('DR12', 'DR12b', 'Validation', 'DR12c')
 
     # Require that the fiber is plugged
     dr12_selection = 'ZWARNING&(1<<7)=0'
@@ -61,13 +61,15 @@ def main():
     bad_chunks = ('boss35','boss36','boss37','boss38')
     bad_chunks_str = ','.join(['"{}"'.format(chunk) for chunk in bad_chunks])
     dr12b_selection = 'ZWARNING&(1<<7)=0 and CHUNK not in ({})'.format(bad_chunks_str)
+    
+    dr12c_selection = 'ZWARNING=0 and CHUNK in ({})'.format(bad_chunks_str)
 
     # Require targets were on "validation" plates
     validiation_plates_str = ','.join(['{}'.format(plate) for plate in validiation_plates])
     valid_selection = 'ZWARNING=0 and PLATE in ({})'.format(validiation_plates_str)
 
     # Print category definitions
-    category_selections = (dr12_selection, dr12b_selection, valid_selection)
+    category_selections = (dr12_selection, dr12b_selection, valid_selection, dr12c_selection)
     print '\nCategory definitions: '
     for category_name, category_selection in zip(category_names, category_selections):
         print '{}: {}'.format(category_name, category_selection)
