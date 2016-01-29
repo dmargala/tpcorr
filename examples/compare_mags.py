@@ -86,7 +86,7 @@ def main():
         for plate,mjd,fiber,psf1,psf2,psf3 in target_list:
 
             dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
-            dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, timeout=None, progress_min_size=0))
+            dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
 
             data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
             wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
