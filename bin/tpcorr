@@ -113,7 +113,7 @@ def main():
         help='Skip to start at this plate')
     parser.add_argument('--offsets', type=str, default=None,
         help='offsets input filename')
-    parser.add_argument('--add-guide-error', type=float, default=None,
+    parser.add_argument('--add-guiding-error', type=float, default=None,
         help='add specified guiding error in quadrature to psf size')
     args = parser.parse_args()
 
