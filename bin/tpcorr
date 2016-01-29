@@ -8,13 +8,16 @@ import tpcorr
 
 import astropy.units as u
 
-def calculate_corrections(obs_grp, wlen_grid, steps_per_exposure=5, seeing_wlen=5400.*u.Angstrom):
+def calculate_corrections(obs_grp, wlen_grid, add_guiding_error=None, steps_per_exposure=5, seeing_wlen=5400.*u.Angstrom):
 
     # Precompute wlen ratio for wavelength dependent seeing adjustment
     wlen_ratio = (wlen_grid / seeing_wlen).si
 
     num_exposures = obs_grp.attrs['num_exposures']
     seeing = obs_grp['seeing'].value * u.arcsec
+    if add_guiding_error:
+        seeing = np.sqrt(seeing**2 + add_guiding_error**2)
+
     fiber_ids = obs_grp['fiber_ids'].value
     num_offset_targets = len(fiber_ids)
 
@@ -110,6 +113,8 @@ def main():
         help='Skip to start at this plate')
     parser.add_argument('--offsets', type=str, default=None,
         help='offsets input filename')
+    parser.add_argument('--add-guide-err', type=float, default=None,
+        help='add specified guiding error in quadrature to psf size')
     args = parser.parse_args()
 
     finder = bossdata.path.Finder()
@@ -202,7 +207,6 @@ def main():
                     continue
 
                 fiber_ids = obs_grp['fiber_ids'].value
-                seeing = obs_grp['seeing'].value * u.arcsec
 
                 outfile_grp = outfile.create_group('{}/{}'.format(plate, mjd))
                 outfile_grp.attrs['design_ha'] = obs_grp.attrs['design_ha']
@@ -214,7 +218,7 @@ def main():
                 print 'Obs {}-{} design ha, obs ha, design temp: {}, {}, {}'.format(
                     plate,mjd,obs_grp.attrs['design_ha'],obs_grp.attrs['ha'],obs_grp.attrs['design_temp'])
 
-                corrections = calculate_corrections(obs_grp, wave)
+                corrections = calculate_corrections(obs_grp, wave, add_guiding_error=args.add_guiding_error * u.arcsec)
 
                 for fiber, correction in zip(fiber_ids, corrections):
                     # Save exposure averaged correction
