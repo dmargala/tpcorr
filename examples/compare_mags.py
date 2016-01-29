@@ -7,6 +7,7 @@ import os
 import h5py
 import numpy as np
 
+import astropy.table
 from astropy.io import fits
 
 import scipy.interpolate
@@ -22,7 +23,6 @@ def main():
         help='throughput correction filename, required')
     parser.add_argument('--output', type=str, default=None,
         help='output filename')
-
     args = parser.parse_args()
 
     # Open connection spAll db
@@ -79,6 +79,8 @@ def main():
     dr12_finder = bossdata.path.Finder(sas_path='/sas/dr12/boss', redux_version='v5_7_0')
     blue_finder = bossdata.path.Finder(sas_path='/sas/dr12/boss', redux_version='test')
     mirror = bossdata.remote.Manager()
+
+    corrections = [0.036, 0.015, 0.013]
 
     for name, target_list in zip(sample_names, target_lists):
         for plate,mjd,fiber,psf1,psf2,psf3 in target_list:
