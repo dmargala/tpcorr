@@ -82,6 +82,8 @@ def main():
         sample_nums = {}
         # Loop over sample categories
         for category_name, category_selection in zip(category_names, category_selections):
+            if category_name == 'DR12c' and sample_name == 'Offset standards':
+                sample_selection = 'LAMBDA_EFF=4000 and CLASS="STAR" and OBJTYPE="SPECTROPHOTO_STD"'
             # Count the number of targets in this sample+category
             sql = sql_prefix + ' WHERE {} and {}'.format(sample_selection, category_selection)
             meta_db.cursor.execute(sql)
