@@ -195,10 +195,10 @@ def main():
     plt.hist(gmr_color_residuals[3], bins=bins, histtype='step', color='black', linestyle='dashed', label='Ancillary Reduction')
     plt.grid(True)
     plt.xlim(bins[0], bins[-1])
-    plt.xlabel(r'$\Delta{({})}$'.format(color_label))
+    plt.xlabel(r'$\Delta{(%s)}$' % (color_label))
     plt.ylabel('Counts')
     plt.legend(prop={'size':12})
-    fig.savefig('residuals-%s.pdf'.format(color_label), bbox_inches='tight')
+    fig.savefig('residuals-%s.pdf' % (color_label), bbox_inches='tight')
 
 if __name__ == '__main__':
     main()
