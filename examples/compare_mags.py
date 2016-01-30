@@ -92,9 +92,11 @@ def main():
     ab_minus_sdss = {'g':0.036, 'r':0.015, 'i':0.013}
     # ab_minus_sdss = {'g':0.012, 'r':0.010, 'i':0.028}
 
-    final_sample_names = [sample_names[1], sample_names[2], 'Corr. offset standards', 
-        'Spec. offset standards', sample_names[0], 'Corr. failed quasars', sample_names[3], sample_names[4]]
-    final_target_list_indices = [1,2,2,2,0,0,3,4]
+    final_sample_names = [sample_names[1], 
+        sample_names[2], 'Corr. offset standards', 'Spec. offset standards', 
+        sample_names[0], 'Corr. failed quasars', 'Spec. failed quasars', 
+        sample_names[3], sample_names[4]]
+    final_target_list_indices = [1,2,2,2,0,0,0,3,4]
 
     gmr_color_residuals = []
 
@@ -117,7 +119,7 @@ def main():
 
             # Get this target's spectrum
             # For the "spectroscopic" offset standard sample, use the special "blue" reduction
-            if name == 'Spec. offset standards':
+            if name == 'Spec. offset standards' or name == 'Spec. failed quasars':
                 blue_plate_filename = blue_finder.get_plate_spec_path(plate, mjd)
                 blue_platefile = bossdata.plate.PlateFile(mirror.get(blue_plate_filename))
                 fibers = np.array([fiber], dtype=int)
@@ -190,9 +192,9 @@ def main():
     bins = np.linspace(-0.5, 0.5, 41, endpoint=True)
     color_label = 'g-r'
     # bins += .5*(bins[1]-bins[0])
-    plt.hist(gmr_color_residuals[1], bins=bins, histtype='stepfilled', color='red', alpha=0.3, label='BOSS')
-    plt.hist(gmr_color_residuals[2], bins=bins, histtype='stepfilled', color='blue', alpha=0.3, label='Corrected BOSS')
-    plt.hist(gmr_color_residuals[3], bins=bins, histtype='step', color='black', linestyle='dashed', label='Ancillary Reduction')
+    plt.hist(gmr_color_residuals[4], bins=bins, histtype='stepfilled', color='red', alpha=0.3, label='BOSS')
+    plt.hist(gmr_color_residuals[5], bins=bins, histtype='stepfilled', color='blue', alpha=0.3, label='Corrected BOSS')
+    plt.hist(gmr_color_residuals[6], bins=bins, histtype='step', color='black', linestyle='dashed', label='Ancillary Reduction')
     plt.grid(True)
     plt.xlim(bins[0], bins[-1])
     plt.xlabel(r'$\Delta{(%s)}$' % (color_label))
