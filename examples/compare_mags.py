@@ -12,6 +12,13 @@ from astropy.io import fits
 
 import scipy.interpolate
 
+import matplotlib as mpl
+mpl.use('Agg')
+mpl.rcParams.update({'font.size': 18})
+mpl.rcParams.update({'savefig.dpi': 200})
+mpl.rcParams.update({'savefig.bbox': 'tight'})
+import matplotlib.pyplot as plt
+
 import bossdata
 
 import specsim
@@ -88,6 +95,8 @@ def main():
     final_sample_names = [sample_names[1], sample_names[2], 'Corr. offset standards', 
         'Spec. offset standards', sample_names[0], 'Corr. failed quasars', sample_names[3], sample_names[4]]
     final_target_list_indices = [1,2,2,2,0,0,3,4]
+
+    gmr_color_residuals = []
 
     for name, target_list_index in zip(final_sample_names, final_target_list_indices):
 
@@ -173,6 +182,23 @@ def main():
         # Print summary table
         summary = '   '.join(['{: .3f} {: .3f}'.format(mean, disp) for mean, disp in zip(delta_mean, delta_nmad)])
         print '{:<25}: {}'.format(name, summary)
+
+        gmr_color_residuals.append(delta[:,1])
+
+    # delta mag histograms
+    fig = plt.figure(figsize=(8,6))
+    bins = np.linspace(-0.5, 0.5, 41, endpoint=True)
+    color_label = 'g-r'
+    # bins += .5*(bins[1]-bins[0])
+    plt.hist(gmr_color_residuals[1], bins=bins, histtype='stepfilled', color='red', alpha=0.3, label='BOSS')
+    plt.hist(gmr_color_residuals[2], bins=bins, histtype='stepfilled', color='blue', alpha=0.3, label='Corrected BOSS')
+    plt.hist(gmr_color_residuals[3], bins=bins, histtype='step', color='black', linestyle='dashed', label='Ancillary Reduction')
+    plt.grid(True)
+    plt.xlim(bins[0], bins[-1])
+    plt.xlabel(r'$\Delta{({})}$'.format(color_label))
+    plt.ylabel('Counts')
+    plt.legend(prop={'size':12})
+    fig.savefig('residuals-%s.pdf'.format(color_label), bbox_inches='tight')
 
 if __name__ == '__main__':
     main()
