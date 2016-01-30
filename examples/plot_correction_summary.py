@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+import argparse
 
 import numpy as np
 import matplotlib as mpl
@@ -14,16 +15,29 @@ import scipy.stats
 import h5py
 
 def main():
-    tpcorr = h5py.File('corrections.hdf5')
 
+    parser = argparse.ArgumentParser(
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    parser.add_argument('--tpcorr', type=str, default=None,
+        help='throughput correction filename, required')
+    parser.add_argument('--output', type=str, default=None,
+        help='output filename')
+    args = parser.parse_args()
+
+
+    tpcorr = h5py.File(args.tpcorr, 'r')
+
+    tpcorr_old = h5py.File('/Users/Daniel/source/qusp/tpcorr-0.1/tpcorr.hdf5','r')
     wave = np.squeeze(tpcorr['wave'].value)
-    # wave = np.linspace(3500., 10500., 15)
+
+    dha_threshold = 1.25 #1.25
 
     tpcorrs = []
-    ha = []
-    alt = []
-    design_ha = []
-    design_alt = []
+    opt_tpcorrs = []
+    has = []
+    alts = []
+    design_has = []
+    design_alts = []
     plate_mjd_list = []
     for plate in tpcorr.keys():
         if plate == 'wave':
@@ -31,72 +45,53 @@ def main():
         for mjd in tpcorr[plate].keys():
             plate_mjd_list.append((plate, mjd))
             grp = tpcorr['{}/{}'.format(plate, mjd)]
-            ha.append(grp.attrs['ha'])
-            design_ha.append(grp.attrs['design_ha'])
-            alt.append(grp.attrs['alt'])
-            design_alt.append(grp.attrs['design_alt'])
+
+            ha, design_ha = grp.attrs['ha'], grp.attrs['design_ha']
+            alt, design_alt = grp.attrs['alt'], grp.attrs['design_alt']
+
+            has.append(grp.attrs['ha'])
+            design_has.append(grp.attrs['design_ha'])
+            alts.append(grp.attrs['alt'])
+            design_alts.append(grp.attrs['design_alt'])
+
             for fiber in grp.keys():
-                tpcorrs.append(tpcorr[plate][mjd][fiber].value.tolist())
-    tpcorrArray = np.array(tpcorrs)
+                tpcorrs.append(grp[fiber].value.tolist())
+            if abs(design_ha-ha) < dha_threshold:
+                for fiber in tpcorr_old[plate][mjd]:
+                    opt_tpcorrs.append(tpcorr_old[plate][mjd][fiber].value.tolist())
 
-    print len(tpcorrs)
+    num_corrections = len(tpcorrs)
+    num_optimal_obs = len(opt_tpcorrs)
+    print 'Number of corrections: ', num_corrections
 
-    mean_ha = np.array(ha)
-    design_ha = np.array(design_ha)
-    mean_alt = np.array(alt)
-    design_alt = np.array(design_alt)
+    # Fraction of 
+    print float(num_corrections-num_optimal_obs)/num_corrections
 
-    dha_threshold = 1.25
+    # Convert lists to numpy arrays
+    tpcorrs = np.array(tpcorrs)
+    opt_tpcorrs = np.array(tpcorrs)
+    mean_ha = np.array(has)
+    design_ha = np.array(design_has)
+    mean_alt = np.array(alts)
+    design_alt = np.array(design_alts)
+
     delta_ha = mean_ha - design_ha
     optimal_obs = np.where(np.abs(delta_ha) < dha_threshold)[0]
-    other_obs = np.where(np.abs(delta_ha) >= dha_threshold)[0]
-    # optimal_plate_mjds = zip(getField('plate')[optimal_obs].tolist(),getField('mjd')[optimal_obs])
     optimal_plate_mjd_list = [plate_mjd for plate_mjd,is_optimal in zip(plate_mjd_list, optimal_obs) if is_optimal]
-    print float(len(mean_ha)-len(optimal_obs))/len(mean_ha)
-
-    opt_tpcorrs = []
-    for plate, mjd in optimal_plate_mjd_list:
-        for fiber in tpcorr[plate][mjd].keys():
-            opt_tpcorrs.append(tpcorr[plate][mjd][fiber].value.tolist())
-    opt_tpcorrArray = np.array(opt_tpcorrs)
 
     # calculate cumulative dist values for a normal distribution
     percentiles = [100*scipy.stats.norm.cdf(sigma) for sigma in [-2,-1,0,1,2]]
 
-    # Mean correction
-    tpcorrmean = np.mean(tpcorrArray, axis=0)
     # N-sigma percentile corrections
-    tpcorrps = [np.percentile(tpcorrArray, percentile, axis=0) for percentile in percentiles]
-
-    opt_tpcorrmean = np.mean(opt_tpcorrArray, axis=0)
-    opt_tpcorrps = [np.percentile(opt_tpcorrArray, percentile, axis=0) for percentile in percentiles]
-    # opt_tpcorrmean = np.mean(tpcorrArray, axis=0)
-    # opt_tpcorrps = [np.percentile(tpcorrArray, percentile, axis=0) for percentile in percentiles]
-    #  5 =>  4000
-    # 25 =>  6000
-    # 40 =>  7500
-    # -6 => 10000
-    # waveIndex = 25
-    waveIndex = 25
-    print 'Choosing percentile examples at wavelength: ', wave[waveIndex]
-    def getPercentileIndex(array, percentile):
-        '''
-        Returns the index of the element matching the specified percentile in array
-        '''
-        return np.argsort(array)[round((len(array)-1)*(percentile/100.))]
-
-    # tpcorrmean = np.mean(tpcorrArray, axis=0)
-    # tpcorrps = [np.percentile(tpcorrArray, p, axis=0) for p in sigmas]
-
-    tpcorrIndices = [getPercentileIndex(tpcorrArray[:,waveIndex], percentile) for percentile in percentiles]
-    opt_tpcorrIndices = [getPercentileIndex(opt_tpcorrArray[:,waveIndex], percentile) for percentile in percentiles]
+    tpcorrps = [np.percentile(tpcorrs, p, axis=0) for p in percentiles]
+    opt_tpcorrps = [np.percentile(opt_tpcorrs, p, axis=0) for p in percentiles]
+    
     purps = mpl.cm.ScalarMappable(mpl.colors.Normalize(vmin=0,vmax=1),'Purples')
     purps.to_rgba(1)
 
     # plot correction
     mpl.rcParams['font.size'] = 12
     plt.figure(figsize=(16,4))
-    # plt.plot(wave, tpcorrmean, color='black', ls='--')
     print wave.shape, tpcorrps[0].shape
     plt.fill_between(wave, tpcorrps[0], tpcorrps[4], color=purps.to_rgba(.25))
     plt.fill_between(wave, tpcorrps[1], tpcorrps[3], color=purps.to_rgba(.75))
@@ -105,10 +100,6 @@ def main():
     plt.plot(wave, opt_tpcorrps[1], color='black', lw=2, ls='-')
     plt.plot(wave, opt_tpcorrps[3], color='black', lw=2, ls='-')
     plt.plot(wave, opt_tpcorrps[4], color='black', lw=2, ls='--')
-
-    # plt.plot(wave, tpcorrArray[tpcorrIndices[0]], color='blue')
-    # plt.plot(wave, tpcorrArray[tpcorrIndices[2]], color='blue')
-    # plt.plot(wave, tpcorrArray[tpcorrIndices[4]], color='blue')
 
     plt.axvline(4000, ls=':', c='b')
     plt.axvline(5400, ls=':', c='r')
