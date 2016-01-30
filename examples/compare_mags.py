@@ -16,19 +16,6 @@ import bossdata
 
 import specsim
 
-def mad(arr):
-    """
-    Median Absolute Deviation: a "Robust" version of standard deviation.
-        Indices variabililty of the sample.
-        https://en.wikipedia.org/wiki/Median_absolute_deviation 
-    """
-    # arr = np.ma.array(arr).compressed() # should be faster to not use masked arrays.
-    med = np.ma.median(arr, axis=0)
-    return np.ma.median(np.ma.abs(arr - med), axis=0)
-
-def nmad(arr):
-    return 1.4826*mad(arr)
-
 def main():
     parser = argparse.ArgumentParser(
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -86,12 +73,15 @@ def main():
     tpcorr = h5py.File(args.tpcorr, 'r')
     tpcorr_wave = tpcorr['wave'].value
 
+    # Initialize finders
     dr12_finder = bossdata.path.Finder(sas_path='/sas/dr12/boss', redux_version='v5_7_0')
     blue_finder = bossdata.path.Finder(sas_path=args.blue_path, redux_version=args.blue_version)
     mirror = bossdata.remote.Manager()
 
-
     bands = ['g','r','i']
+
+    # Need to correct sdss imaging magnitudes 
+    # More more details see: http://www.sdss3.org/dr8/algorithms/fluxcal.php#SDSStoAB
     ab_minus_sdss = {'g':0.036, 'r':0.015, 'i':0.013}
     # ab_minus_sdss = {'g':0.012, 'r':0.010, 'i':0.028}
 
@@ -101,44 +91,36 @@ def main():
 
     for name, target_list_index in zip(final_sample_names, final_target_list_indices):
 
-        imaging_grid = np.empty((len(target_lists[target_list_index]),5))
-        syn_grid = np.empty_like(imaging_grid)
+        # Allocate arrays for storing magnitude/color (g-r, r-i, g, r, i) calculations
+        imaging_mags = np.ma.empty((len(target_lists[target_list_index]), 5))
+        syn_mags = np.ma.empty_like(imaging_mags)
+        imaging_mags[:] = np.ma.masked
+        syn_mags[:] = np.ma.masked
 
-        # table = astropy.table.Table(rows=target_lists[target_list_index], names=what.split(','))
-        # dr12_plate_name = dr12_finder.get_plate_spec_path(plate, mjd)
-        # dr12_plate = bossdata.plate.PlateFile(mirror.get(dr12_plate_name))
-        # data = dr12_plate.get_valid_data(np.array([fiber]), use_ivar=True)
-
+        # Loop over targets
         for i,target in enumerate(target_lists[target_list_index]):
-
-            plate,mjd,fiber,psf1,psf2,psf3 = target
-
-            sdss_mags = {'g':psf1, 'r':psf2, 'i':psf3}
+            # Parse target row tuple
+            plate,mjd,fiber,psfmag_1,psfmag_2,psfmag_3 = target
+            # Assign imaging magnitudes to dictionary
+            sdss_mags = {'g':psfmag_1, 'r':psfmag_2, 'i':psfmag_3}
+            # Correct sdss imaging magnitudes
             corrected_sdss_mags = {band: ab_minus_sdss[band] + sdss_mags[band] for band in bands}
 
+            # Get this target's spectrum
+            # For the "spectroscopic" offset standard sample, use the special "blue" reduction
             if name == 'Spec. offset standards':
-                spplate_filename = blue_finder.get_plate_spec_path(plate, mjd)
-                try:
-                    spplate = fits.open(mirror.get(spplate_filename))
-                except IOError:
-                    raise IOError('Error opening spPlate file: %s' % spplate_filename)
-
-                flux = spplate[0].data[fiber-1]
-                ivar = spplate[1].data[fiber-1]
-                and_mask = spplate[2].data[fiber-1]
-
-                coeff0 = spplate[0].header['COEFF0']
-                coeff1 = spplate[0].header['COEFF1']
-                loglam = coeff0 + coeff1*np.arange(0, len(flux))
-                wlen = 10**loglam
-
+                blue_plate_filename = blue_finder.get_plate_spec_path(plate, mjd)
+                blue_platefile = bossdata.plate.PlateFile(mirror.get(blue_plate_filename))
+                fibers = np.array([fiber], dtype=int)
+                data = blue_platefile.get_valid_data(fibers, fiducial_grid=True, use_ivar=True)[0]
+            # Otherwise use the dr12 lite spec file
             else:
                 dr12_spec_name = dr12_finder.get_spec_path(plate, mjd, fiber=fiber, lite=True)
-                dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name, progress_min_size=0))
+                dr12_spec = bossdata.spec.SpecFile(mirror.get(dr12_spec_name))
                 data = dr12_spec.get_valid_data(fiducial_grid=True, use_ivar=True)
-                wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
+            wlen,flux,ivar = data['wavelength'][:],data['flux'][:],data['ivar'][:]
 
-
+            # For the "corrected" samples, look up and play the target's throughut correction
             if name[:4] == 'Corr':
                 # Load this target's correction
                 correction = tpcorr['{}/{}/{}'.format(plate,mjd,fiber)].value
@@ -151,34 +133,45 @@ def main():
                 flux *= resampled_correction
                 ivar /= (resampled_correction**2)
 
+            # Calculate synthetic ab magnitudes for this spectrum
             spectrum = specsim.spectrum.SpectralFluxDensity(wlen, flux)
             syn_mag = spectrum.getABMagnitudes()
 
+            # If there's a problem with any of the magnitudes, throw the target away
             missing_syn_mag = False
             for band in bands:
                 if syn_mag[band] == None:
                     missing_syn_mag = True
-
             if missing_syn_mag:
                 continue
-                
-            imaging_grid[i,0] = (corrected_sdss_mags['g']-corrected_sdss_mags['r'])
-            imaging_grid[i,1] = (corrected_sdss_mags['r']-corrected_sdss_mags['i'])
-            imaging_grid[i,2] = corrected_sdss_mags['g']
-            imaging_grid[i,3] = corrected_sdss_mags['r']
-            imaging_grid[i,4] = corrected_sdss_mags['i']
 
-            syn_grid[i,0] = (syn_mag['g']-syn_mag['r'])
-            syn_grid[i,1] = (syn_mag['r']-syn_mag['i'])
-            syn_grid[i,2] = syn_mag['g']
-            syn_grid[i,3] = syn_mag['r']
-            syn_grid[i,4] = syn_mag['i']
+            # Save imaging and synthetic magnitudes
+            imaging_mags[i,2] = corrected_sdss_mags['g']
+            imaging_mags[i,3] = corrected_sdss_mags['r']
+            imaging_mags[i,4] = corrected_sdss_mags['i']
 
-        delta_mean = np.mean(syn_grid - imaging_grid, axis=0)
-        delta_disp = nmad(syn_grid - imaging_grid)
+            syn_mags[i,2] = syn_mag['g']
+            syn_mags[i,3] = syn_mag['r']
+            syn_mags[i,4] = syn_mag['i']
+
+        # Calculate colors
+        imaging_mags[:,0] = imaging_mags[:,2] - imaging_mags[:,3]
+        imaging_mags[:,1] = imaging_mags[:,3] - imaging_mags[:,4]
+        syn_mags[:,0] = syn_mags[:,2] - syn_mags[:,3]
+        syn_mags[:,1] = syn_mags[:,3] - syn_mags[:,4]
+
+        # Compare imaging and synthetic magnitudes
+        delta = syn_mags - imaging_mags
+        delta_mean = np.ma.mean(delta, axis=0)
+
+        # Normalized Median Absolute Deviation: a "Robust" version of standard deviation
+        # https://en.wikipedia.org/wiki/Median_absolute_deviation 
+        delta_median = np.ma.median(delta, axis=0)
+        delta_mad = np.ma.median(np.ma.abs(delta - delta_median), axis=0)
+        delta_nmad = 1.4826*delta_mad
         
-        summary = '   '.join(['{: .3f} {: .3f}'.format(mean, disp) for mean, disp in zip(delta_mean, delta_disp)])
-
+        # Print summary table
+        summary = '   '.join(['{: .3f} {: .3f}'.format(mean, disp) for mean, disp in zip(delta_mean, delta_nmad)])
         print '{:<25}: {}'.format(name, summary)
 
 if __name__ == '__main__':
