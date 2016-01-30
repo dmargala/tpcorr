@@ -189,12 +189,13 @@ def main():
 
     # delta mag histograms
     fig = plt.figure(figsize=(8,6))
-    bins = np.linspace(-0.5, 0.5, 41, endpoint=True)
+    bins = np.linspace(-0.5, 0.5, 40, endpoint=False)
+    bins += 0.5 * (bins[1] - bins[0])
     color_label = 'g-r'
     # bins += .5*(bins[1]-bins[0])
-    plt.hist(gmr_color_residuals[4], bins=bins, histtype='stepfilled', color='red', alpha=0.3, label='BOSS')
-    plt.hist(gmr_color_residuals[5], bins=bins, histtype='stepfilled', color='blue', alpha=0.3, label='Corrected BOSS')
-    plt.hist(gmr_color_residuals[6], bins=bins, histtype='step', color='black', linestyle='dashed', label='Ancillary Reduction')
+    plt.hist(gmr_color_residuals[1], bins=bins, histtype='stepfilled', color='red', alpha=0.3, label=final_sample_names[1])
+    plt.hist(gmr_color_residuals[2], bins=bins, histtype='stepfilled', color='blue', alpha=0.3, label=final_sample_names[2])
+    plt.hist(gmr_color_residuals[3], bins=bins, histtype='step', color='black', linestyle='dashed', label=final_sample_names[3])
     plt.grid(True)
     plt.xlim(bins[0], bins[-1])
     plt.xlabel(r'$\Delta{(%s)}$' % (color_label))
