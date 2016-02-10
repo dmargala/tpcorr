@@ -158,7 +158,9 @@ if __name__ == '__main__':
     plt.ylabel('Acceptance')
     plt.xlim(wlen_array[0].value, wlen_array[-1].value)
     plt.grid(True)
-    plt.show()
+    
+    print 'Saving figure: acceptance_model_test.png'
+    plt.savefig('acceptance_model_test.png')
 
 
 
