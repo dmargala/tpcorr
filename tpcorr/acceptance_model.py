@@ -137,6 +137,8 @@ if __name__ == '__main__':
         amodel = amodel_array[i]
         acceptance_grid[:,i] = amodel(offset_grid[:,i]*u.arcsec)
 
+    import matplotlib
+    matplotlib.use('Agg')
     import matplotlib.pyplot as plt
 
     plt.figure(figsize=(8,6))
