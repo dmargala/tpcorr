@@ -2,6 +2,9 @@
 tpcorr
 ======
 
+.. image:: https://travis-ci.org/dmargala/tpcorr.svg?branch=master
+        :target: https://travis-ci.org/dmargala/tpcorr
+        
 Throughput correction code for offset fibers in SDSS.
 
 Setup
