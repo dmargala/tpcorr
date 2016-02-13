@@ -13,7 +13,7 @@ import scipy.interpolate
 
 import astropy.units as u
 
-import tpcorr
+import tpcorr.acceptance_model
 
 def plot_offset_acceptance(t, wlen=5400*u.Angstrom, fwhm1=1.2, fwhm2=1.8, nfwhm=3, 
                            noffset=50, offset_min=0, offset_max=2):
