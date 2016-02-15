@@ -4,3 +4,5 @@ wheel==0.23.0
 pytest==2.6.3
 numpy==1.9.2
 astropy==1.0.1
+matplotlib==1.5.1
+scipy==0.15.1
