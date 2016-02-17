@@ -34,9 +34,9 @@ class Pointing(object):
         except astropy.coordinates.errors.UnknownSiteException:
             self.where = astropy.coordinates.EarthLocation(lat=32.7797556*u.deg, lon=-(105+49./60.+13/3600.)*u.deg, height=2797*u.m)
         self.distortion_model = tpcorr.distortion.get_optical_distortion_model(330.0 * u.mm, self.platescale)
-        #self.chromatic_model = tpcorr.distortion.get_chromatic_distortion_model(self.platescale)
+        self.chromatic_model = tpcorr.distortion.get_chromatic_distortion_model(self.platescale)
 
-    def transform(self, targets, tai, wlen, temperature, pressure):
+    def transform(self, targets, tai, wlen, temperature, pressure, do_chromatic_distortion=True):
         """Transform from sky coordinates to focal plane coordinates.
         
         Args:
@@ -91,6 +91,21 @@ class Pointing(object):
 
         x_dist = distortion * x_rot
         y_dist = distortion * y_rot
+
+        if do_chromatic_distortion:
+            r_dist = np.sqrt(x_dist**2 + y_dist**2)
+            dr5000 = self.chromatic_model(r_dist, 5000)
+            dr = np.empty_like(r_dist)
+            # ugh broadcasting...
+            if wlen.isscalar:
+                dr = self.chromatic_model(r_dist, wlen) - dr5000
+            elif len(wlen.shape) == 2:
+                for iw,w in enumerate(wlen.flatten()):
+                    dr[:,iw] = self.chromatic_model(r_dist[:,iw], w) - dr5000[:,iw]
+            chromatic_distortion = ((r_dist + dr) / r_dist).si
+
+            x_dist = chromatic_distortion * x_dist
+            y_dist = chromatic_distortion * y_dist
         
         return x_dist, y_dist, altaz.alt, altaz.az
     
