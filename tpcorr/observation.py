@@ -47,13 +47,14 @@ class Observation(object):
         
         # Initialize a pointing object for this plate's sky location.
         ra_center = float(plug_map['raCen']) * u.deg
+        self.ra_center = ra_center
         dec_center = float(plug_map['decCen']) * u.deg
         print 'Plate center is RA={:.3f}, DEC={:.3f} for {}-{}'.format(ra_center, dec_center, plate, pointing_label)
         self.pointing = tpcorr.pointing.Pointing(ra_center, dec_center)
         
         # Find the nominal observing temperature and time that this plate's holes are drilled for.
         self.design_temp = float(plug_map['temp'])*u.deg_C
-        design_pressure = None # Calculate based on elevation and temperature
+        self.design_pressure = None # Calculate based on elevation and temperature
         self.design_ha = float(plug_map['ha'].split()[pointing_index]) * u.deg
         midnight = astropy.time.Time(mjd, format='mjd', scale='tai', location=self.pointing.where)
         design_time = specsim.transform.adjust_time_to_hour_angle(midnight, ra_center, self.design_ha, max_iterations=100)
@@ -74,7 +75,7 @@ class Observation(object):
         
         # Calculate the nominal guide fiber positions.
         self.guide_x0, self.guide_y0, _, _ = self.pointing.transform(
-            self.guide_targets, self.design_tai, guide_wlen, self.design_temp, design_pressure)
+            self.guide_targets, self.design_tai, guide_wlen, self.design_temp, self.design_pressure)
         
         # Find this plate's offset fibers. We have to use spAll for this since the plug map does
         # not record the design wavelengths.
@@ -96,12 +97,23 @@ class Observation(object):
             # close (within ~0.2 arcsec) and we only use offsets calculated consistently with
             # transform() in the following.
             self.offset_x0, self.offset_y0, offset_alt, offset_az = self.pointing.transform(
-                self.offset_targets, self.design_tai, offset_wlen, self.design_temp, design_pressure)
+                self.offset_targets, self.design_tai, offset_wlen, self.design_temp, self.design_pressure)
+
+            # Apply chromatic distortion, if requested.
+            # r = np.sqrt(self.offset_x0**2 + self.offset_y0**2)
+            # distortion = ((r + self.pointing.chromatic_model(r, offset_wlen)) / r).si
+            # self.offset_x0 *= distortion
+            # self.offset_y0 *= distortion
         
             # Calculate where the offset target fibers would have been positioned if they were
             # designed for the same wavelength as the standard stars.
             self.offset_x0_std, self.offset_y0_std, _, _ = self.pointing.transform(
-                self.offset_targets, self.design_tai, std_wlen, self.design_temp, design_pressure)
+                self.offset_targets, self.design_tai, std_wlen, self.design_temp, self.design_pressure)
+
+            # r = np.sqrt(self.offset_x0_std**2 + self.offset_y0_std**2)
+            # distortion = ((r + self.pointing.chromatic_model(r, std_wlen)) / r).si
+            # self.offset_x0_std *= distortion
+            # self.offset_y0_std *= distortion
         
         # Initialize the wavelength grid to use for calculating corrections.
         self.wlen_grid = np.linspace(3500., 10500., wlen_grid_steps)[:, np.newaxis] * u.Angstrom
@@ -210,6 +222,69 @@ class Observation(object):
         # Apply guiding corrections to estimate the actual offset target paths during the exposure.
         return guider.correct(offset_x, offset_y)
 
+    def get_mean_exp_centroids(self):
+        # Create time steps covering this exposure.
+        midnight = astropy.time.Time(self.mjd, format='mjd', scale='tai', location=self.pointing.where)
+        ha = np.mean(self.ha)
+        time = specsim.transform.adjust_time_to_hour_angle(midnight, self.ra_center, ha, max_iterations=100)
+        tai = time.mjd * 86400.
+
+        temperature = np.mean(self.temperature)
+        pressure = np.mean(self.pressure)
+
+        print 'Mean Exposure: seeing {:.3f}, T={:+5.1f}, P={:.1f}, TAI {:.1f} ({:+7.3f} days, HA {:+.1f})'.format(
+                np.mean(self.seeing), temperature, pressure, tai, (tai - self.design_tai)/86400., ha)
+
+        # Calculate the actual guide target positions on the focal plane without any guiding.
+        guide_x, guide_y, _, _ = self.pointing.transform(
+            self.guide_targets[:, np.newaxis], tai, self.guide_wlen, self.design_temp, self.design_pressure)
+
+        # Solve for the optimal guider corrections.
+        guider = tpcorr.guider.Guider(self.guide_x0, self.guide_y0, guide_x, guide_y)
+
+        # Calculate the offset target paths on the focal plane without any guiding, for the actual observing conditions.
+        offset_x, offset_y, _, _ = self.pointing.transform(
+            self.offset_targets[:, np.newaxis, np.newaxis], tai, self.wlen_grid, self.design_temp, self.design_pressure)
+
+        return guider.correct(offset_x, offset_y)
+
+    def get_mean_correction(self):
+
+        corrections = np.empty((self.num_offset_targets, self.wlen_grid_steps, 1))
+
+        # Estimate the actual offset target paths during the exposure
+        # (offset_x0, offset_y0), (offset_x0_std, offset_y0_std), (guided_x, guided_y) = self.get_mean_exp_centroids()
+        guided_x, guided_y = self.get_mean_exp_centroids()
+
+        # Calculate centroid offsets for each offset target, relative to its nominal fiber center.
+        offset = np.sqrt(
+            (guided_x - self.offset_x0[:, np.newaxis, np.newaxis])**2 +
+            (guided_y - self.offset_y0[:, np.newaxis, np.newaxis])**2)
+
+        # Calculate centroid offsets for each offset target, relative to where its fiber center would
+        # be if it were designed for the same wavelength as the standard stars.
+        offset_std = np.sqrt(
+            (guided_x - self.offset_x0_std[:, np.newaxis, np.newaxis])**2 +
+            (guided_y - self.offset_y0_std[:, np.newaxis, np.newaxis])**2)
+
+        seeing = np.mean(self.seeing)
+
+        max_offset = 1.1/2.0*max(np.max((offset / self.pointing.platescale).to(u.arcsec)).value,
+                                 np.max((offset_std / self.pointing.platescale).to(u.arcsec)).value)
+
+        acceptance_model = tpcorr.acceptance_model.AcceptanceModel(seeing, max_offset=max_offset)
+
+        # Calculate the acceptance fractions for both sets of centroid offsets.
+        acceptance = acceptance_model((offset / self.pointing.platescale).to(u.arcsec))
+        acceptance_std = acceptance_model((offset_std / self.pointing.platescale).to(u.arcsec))
+        
+        # Calculate the acceptance fraction ratios, tabulated for each offset target, wavelength and time.
+        # The ratio calculated this way gives the correction of eqn (13).
+        corrections = acceptance_std / acceptance
+
+        mean_correction = np.mean(corrections, axis=-1)
+
+        return mean_correction, guided_x, guided_y
 
     def get_corrections(self, seeing_wlen=5400.*u.Angstrom):
 
@@ -249,7 +324,6 @@ class Observation(object):
             # acceptance_model_grid = map(tpcorr.acceptance_model.AcceptanceModel, seeing_wlen_adjusted)
             max_offset = 1.1/2.0*max(np.max((offset / self.pointing.platescale).to(u.arcsec)).value,
                     np.max((offset_std / self.pointing.platescale).to(u.arcsec)).value)
-
 
             for wlen_index in range(self.wlen_grid_steps):
                 # Build acceptance model for this wavelength
