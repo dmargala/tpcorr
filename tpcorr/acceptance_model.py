@@ -6,6 +6,43 @@ import scipy.interpolate
 
 import astropy.units as u
 
+class AcceptanceModel(object):
+    def __init__(self, seeing_fwhm, fiber_diameter=2*u.arcsec, sampling=100, max_offset=2.0):
+        """
+        Calculate the fiber acceptance fraction versus offset for a specified PSF.
+
+        Args:
+            fiber_diameter: Diameter of the fiber to use with explicit angular units.
+            psf: PSF model to use, assumed to be specified in arcseconds.
+            sampling: Sampling to use for the calculation. Higher samplings take longer
+                but give more accurate results.
+            max_offset: Maximum centroid offset to calculate, as a ratio of the
+                fiber diameter.
+        """
+        # Render the PSF to an image with size fiber_diameter by (max_offset+1)*fiber_diameter.
+        diam_arcsec = (fiber_diameter.to(u.arcsec)).value
+        width = 2 * sampling + 1
+        pixel_scale = diam_arcsec / width
+        height = int(np.ceil((max_offset + 1) * width))
+        sigma_arcsec = seeing_fwhm.to(u.arcsec).value / (2. * np.sqrt(2. * np.log(2)))
+        xx = pixel_scale * (np.arange(width) - 0.5 * (width - 1))
+        yy = pixel_scale * (np.arange(height) - 0.5 * (width - 1))
+        x, y = np.meshgrid(xx, yy, sparse=True, copy=False)
+        image = np.exp(-(x**2 + y**2) / (2. * sigma_arcsec**2)) * pixel_scale**2 / (2 * np.pi * sigma_arcsec**2)
+        # Prepare a boolean mask of pixels falling inside the fiber aperture.
+        mask = xx**2 + xx[:, np.newaxis]**2 < (0.5 * diam_arcsec)**2
+        # Loop over centroid offsets.
+        offset = np.arange(height - width + 1) * pixel_scale
+        acceptance = np.zeros_like(offset)
+        for dy in range(height - width + 1):
+            acceptance[dy] = np.sum(image[dy:dy + width] * mask)
+        ##plt.plot(offset, acceptance)
+        self.interpolation = scipy.interpolate.interp1d(
+            offset, acceptance, kind='linear', copy=True, bounds_error=True)
+
+    def __call__(self, centroid_offsets):
+        return self.interpolation(centroid_offsets.to(u.arcsec).value)
+
 class Telescope(object):
     """
     Represents a telescope.
@@ -76,43 +113,6 @@ class Telescope(object):
         else:
             return scipy.interpolate.interp1d(
                 offset*fiber_diameter.to(u.arcsec).value, acceptance, kind='linear', copy=True, bounds_error=True)
-
-class AcceptanceModel(object):
-    def __init__(self, seeing_fwhm, fiber_diameter=2*u.arcsec, sampling=100, max_offset=2.0):
-        """
-        Calculate the fiber acceptance fraction versus offset for a specified PSF.
-
-        Args:
-            fiber_diameter: Diameter of the fiber to use with explicit angular units.
-            psf: PSF model to use, assumed to be specified in arcseconds.
-            sampling: Sampling to use for the calculation. Higher samplings take longer
-                but give more accurate results.
-            max_offset: Maximum centroid offset to calculate, as a ratio of the
-                fiber diameter.
-        """
-        # Render the PSF to an image with size fiber_diameter by (max_offset+1)*fiber_diameter.
-        diam_arcsec = (fiber_diameter.to(u.arcsec)).value
-        width = 2 * sampling + 1
-        pixel_scale = diam_arcsec / width
-        height = int(np.ceil((max_offset + 1) * width))
-        sigma_arcsec = seeing_fwhm.to(u.arcsec).value / (2. * np.sqrt(2. * np.log(2)))
-        xx = pixel_scale * (np.arange(width) - 0.5 * (width - 1))
-        yy = pixel_scale * (np.arange(height) - 0.5 * (width - 1))
-        x, y = np.meshgrid(xx, yy, sparse=True, copy=False)
-        image = np.exp(-(x**2 + y**2) / (2. * sigma_arcsec**2)) * pixel_scale**2 / (2 * np.pi * sigma_arcsec**2)
-        # Prepare a boolean mask of pixels falling inside the fiber aperture.
-        mask = xx**2 + xx[:, np.newaxis]**2 < (0.5 * diam_arcsec)**2
-        # Loop over centroid offsets.
-        offset = np.arange(height - width + 1) * pixel_scale
-        acceptance = np.zeros_like(offset)
-        for dy in range(height - width + 1):
-            acceptance[dy] = np.sum(image[dy:dy + width] * mask)
-        ##plt.plot(offset, acceptance)
-        self.interpolation = scipy.interpolate.interp1d(
-            offset, acceptance, kind='linear', copy=True, bounds_error=True)
-
-    def __call__(self, centroid_offsets):
-        return self.interpolation(centroid_offsets.to(u.arcsec).value)
 
 if __name__ == '__main__':
 
