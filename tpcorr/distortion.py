@@ -70,10 +70,11 @@ def get_chromatic_distortion_model(platescale):
     r_table = (np.arcsin(sin_r_table.value) * u.rad * platescale).to(u.mm)
     
     # Calculate fractional distortions relative to 5300A
-    d5300 = distortions_relative_to_5300 / distortions_at_5300 
+    d5300 = np.zeros(distortions_relative_to_5300.shape)
+    d5300[:, 1:] = (distortions_relative_to_5300[:, 1:] / distortions_at_5300[1:]).si
     # We are copying the original IDL code here, but setting these to zero might
     # make more sense.
-    d5300[:, 0] = d5300[:, 1]
+    # d5300[:, 0] = d5300[:, 1]
     
     # Calculate additive distortions relative to 5500A.
     assert distortion_wlen[2] == 5500. * u.Angstrom
@@ -85,12 +86,12 @@ def get_chromatic_distortion_model(platescale):
     
     def model(r, wlen):
         # Clip wavelengths to the tabulated limits.
-        wlen = np.clip(wlen, distortion_wlen[0], distortion_wlen[-1])
+        wlen_clipped = np.clip(wlen, distortion_wlen[0], distortion_wlen[-1])
         # Calculate the additive relative distortion at each wavelength.
-        radial_distortion = wlen_interpolator(wlen)
+        radial_distortion = wlen_interpolator(wlen_clipped)
         r_interpolator = scipy.interpolate.interp1d(r_table, radial_distortion, kind='cubic',
                                                     copy=False, bounds_error=True)
-        return r * r_interpolator(r)
+        return r * r_interpolator(r.to(u.mm))
     
     return model
 
