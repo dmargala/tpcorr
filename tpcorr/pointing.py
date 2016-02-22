@@ -36,7 +36,7 @@ class Pointing(object):
         self.distortion_model = tpcorr.distortion.get_optical_distortion_model(330.0 * u.mm, self.platescale)
         self.chromatic_model = tpcorr.distortion.get_chromatic_distortion_model(self.platescale)
 
-    def transform(self, targets, tai, wlen, temperature, pressure, do_chromatic_distortion=True):
+    def transform(self, targets, tai, wlen, temperature, pressure, do_chromatic_distortion=True, extrap_wlen=False):
         """Transform from sky coordinates to focal plane coordinates.
         
         Args:
@@ -94,14 +94,14 @@ class Pointing(object):
 
         if do_chromatic_distortion:
             r_dist = np.sqrt(x_dist**2 + y_dist**2)
-            dr5000 = self.chromatic_model(r_dist, 5000)
+            dr5000 = self.chromatic_model(r_dist, 5000, extrap_wlen)
             dr = np.empty_like(r_dist)
             # ugh broadcasting...
             if wlen.isscalar:
-                dr = self.chromatic_model(r_dist, wlen) - dr5000
+                dr = self.chromatic_model(r_dist, wlen, extrap_wlen) - dr5000
             elif len(wlen.shape) == 2:
                 for iw,w in enumerate(wlen.flatten()):
-                    dr[:,iw] = self.chromatic_model(r_dist[:,iw], w) - dr5000[:,iw]
+                    dr[:,iw] = self.chromatic_model(r_dist[:,iw], w.to(u.Angstrom).value, extrap_wlen) - dr5000[:,iw]
             chromatic_distortion = ((r_dist + dr) / r_dist).si
 
             x_dist = chromatic_distortion * x_dist

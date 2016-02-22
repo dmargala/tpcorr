@@ -98,22 +98,11 @@ class Observation(object):
             # transform() in the following.
             self.offset_x0, self.offset_y0, offset_alt, offset_az = self.pointing.transform(
                 self.offset_targets, self.design_tai, offset_wlen, self.design_temp, self.design_pressure)
-
-            # Apply chromatic distortion, if requested.
-            # r = np.sqrt(self.offset_x0**2 + self.offset_y0**2)
-            # distortion = ((r + self.pointing.chromatic_model(r, offset_wlen)) / r).si
-            # self.offset_x0 *= distortion
-            # self.offset_y0 *= distortion
         
             # Calculate where the offset target fibers would have been positioned if they were
             # designed for the same wavelength as the standard stars.
             self.offset_x0_std, self.offset_y0_std, _, _ = self.pointing.transform(
                 self.offset_targets, self.design_tai, std_wlen, self.design_temp, self.design_pressure)
-
-            # r = np.sqrt(self.offset_x0_std**2 + self.offset_y0_std**2)
-            # distortion = ((r + self.pointing.chromatic_model(r, std_wlen)) / r).si
-            # self.offset_x0_std *= distortion
-            # self.offset_y0_std *= distortion
         
         # Initialize the wavelength grid to use for calculating corrections.
         self.wlen_grid = np.linspace(3500., 10500., wlen_grid_steps)[:, np.newaxis] * u.Angstrom
@@ -222,7 +211,7 @@ class Observation(object):
         # Apply guiding corrections to estimate the actual offset target paths during the exposure.
         return guider.correct(offset_x, offset_y)
 
-    def get_mean_exp_centroids(self):
+    def get_mean_exp_centroids(self, extrap_wlen=False):
         # Create time steps covering this exposure.
         midnight = astropy.time.Time(self.mjd, format='mjd', scale='tai', location=self.pointing.where)
         ha = np.mean(self.ha)
@@ -244,17 +233,17 @@ class Observation(object):
 
         # Calculate the offset target paths on the focal plane without any guiding, for the actual observing conditions.
         offset_x, offset_y, _, _ = self.pointing.transform(
-            self.offset_targets[:, np.newaxis, np.newaxis], tai, self.wlen_grid, self.design_temp, self.design_pressure)
+            self.offset_targets[:, np.newaxis, np.newaxis], tai, self.wlen_grid, self.design_temp, self.design_pressure, extrap_wlen=extrap_wlen)
 
         return guider.correct(offset_x, offset_y)
 
-    def get_mean_correction(self):
+    def get_mean_correction(self, extrap_wlen=False):
 
         corrections = np.empty((self.num_offset_targets, self.wlen_grid_steps, 1))
 
         # Estimate the actual offset target paths during the exposure
         # (offset_x0, offset_y0), (offset_x0_std, offset_y0_std), (guided_x, guided_y) = self.get_mean_exp_centroids()
-        guided_x, guided_y = self.get_mean_exp_centroids()
+        guided_x, guided_y = self.get_mean_exp_centroids(extrap_wlen=extrap_wlen)
 
         # Calculate centroid offsets for each offset target, relative to its nominal fiber center.
         offset = np.sqrt(

@@ -58,6 +58,26 @@ distortions_relative_to_5300 = np.array([
     [  0.000,  0.004,  0.006,  0.008,  0.009,  0.009,  0.009,  0.008,  0.004, -0.007 ]
 ]) * u.mm
 
+def extrap1d(interpolator):
+    xs = interpolator.x
+    ys = interpolator.y
+
+    def pointwise(x):
+        if x < xs[0]:
+            return ys[0]+(x-xs[0])*(ys[1]-ys[0])/(xs[1]-xs[0])
+        elif x > xs[-1]:
+            return ys[-1]+(x-xs[-1])*(ys[-1]-ys[-2])/(xs[-1]-xs[-2])
+        else:
+            return interpolator(x)
+
+    def ufunclike(xs):
+        if isinstance(xs, (list, tuple, np.ndarray)):
+            return np.array(map(pointwise, np.array(xs)))
+        else:
+            return pointwise(xs)
+
+    return ufunclike
+
 
 def get_chromatic_distortion_model(platescale):
     """
@@ -83,12 +103,17 @@ def get_chromatic_distortion_model(platescale):
     # Build a linear interpolator in wavelength of additive distortions relative to 5500A.
     wlen_interpolator = scipy.interpolate.interp1d(distortion_wlen, d5500, axis=0,
                                                    kind='linear', copy=True, bounds_error=True)
-    
-    def model(r, wlen):
-        # Clip wavelengths to the tabulated limits.
-        wlen_clipped = np.clip(wlen, distortion_wlen[0], distortion_wlen[-1])
-        # Calculate the additive relative distortion at each wavelength.
-        radial_distortion = wlen_interpolator(wlen_clipped)
+    wlen_interpolator_ex = extrap1d(wlen_interpolator)
+    def model(r, wlen, extrap_wlen=False):
+        if extrap_wlen:
+            # Calculate the additive relative distortion at each wavelength.
+            radial_distortion = wlen_interpolator_ex(wlen)
+        else:
+            # Clip wavelengths to the tabulated limits.
+            wlen_clipped = np.clip(wlen, distortion_wlen[0], distortion_wlen[-1])
+            # Calculate the additive relative distortion at each wavelength.
+            radial_distortion = wlen_interpolator(wlen_clipped)
+        
         r_interpolator = scipy.interpolate.interp1d(r_table, radial_distortion, kind='cubic',
                                                     copy=False, bounds_error=True)
         return r * r_interpolator(r.to(u.mm))
