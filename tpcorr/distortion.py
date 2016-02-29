@@ -58,6 +58,8 @@ distortions_relative_to_5300 = np.array([
     [  0.000,  0.004,  0.006,  0.008,  0.009,  0.009,  0.009,  0.008,  0.004, -0.007 ]
 ]) * u.mm
 
+
+
 def extrap1d(interpolator):
     xs = interpolator.x
     ys = interpolator.y
@@ -71,9 +73,9 @@ def extrap1d(interpolator):
             return interpolator(x)
 
     def ufunclike(xs):
-        if isinstance(xs, (list, tuple, np.ndarray)):
+        try:
             return np.array(map(pointwise, np.array(xs)))
-        else:
+        except TypeError:
             return pointwise(xs)
 
     return ufunclike

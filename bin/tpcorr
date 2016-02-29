@@ -147,7 +147,9 @@ def main():
             outfile = h5py.File(filename, 'w')
 
             # Calculate average correction from individual exposure offsets
-            corrections, avg_corrections, guided_centroids = obs.get_corrections()
+
+            avg_corrections, _, _ = obs.get_mean_correction()
+            # corrections, avg_corrections, guided_centroids = obs.get_corrections()
 
             # Save corrections to output file
             outfile.create_dataset('wave', data=obs.wlen_grid)
@@ -180,7 +182,7 @@ def main():
 
         # Loop over good plates
         counter = 0
-        for good_plate in good_plates:
+        for good_plate in good_plates[::-1]:
             plate, mjd = good_plate['PLATE'], good_plate['MJD']
             # These two plates do not have any offset targets (and they're 
             # missing r2 exposures which requires causes an error when obs 
@@ -226,13 +228,13 @@ def main():
 
             else:
                 # Initialize observation model
-                obs = tpcorr.observation.Observation(plate, mjd, wlen_grid_steps=args.wlen_grid_steps,
-                    pressure0=71.89 * u.kPa, temperature0=5 * u.deg_C)
+                obs = tpcorr.observation.Observation(plate, mjd, wlen_grid_steps=args.wlen_grid_steps,)
                 if len(obs.offset_targets) == 0:
                     continue
 
                 # Calculate average correction from individual exposure offsets
-                # corrections, avg_corrections, guided_centroids = obs.get_corrections()
+                avg_corrections, _, _ = obs.get_mean_correction()
+
                 # Create plate
                 outfile_grp = outfile.create_group('{}/{}'.format(plate, mjd))
                 outfile_grp.attrs['design_ha'] = obs.design_ha.to(u.deg).value
@@ -240,36 +242,37 @@ def main():
                 outfile_grp.attrs['design_alt'] = obs.design_alt.to(u.deg).value
                 outfile_grp.attrs['ha'] = np.mean(obs.ha.to(u.deg).value)
                 outfile_grp.attrs['alt'] = np.mean(obs.alt.to(u.deg).value)
+                outfile_grp.attrs['seeing'] = np.mean(obs.seeing.to(u.arcsec).value)
 
-                outfile_grp.attrs['num_exposures'] = obs.spec_file.num_exposures
+                # outfile_grp.attrs['num_exposures'] = obs.spec_file.num_exposures
 
-                outfile_grp.create_dataset('seeing', data=obs.seeing)
-                outfile_grp.create_dataset('fiber_ids', data=obs.fiber_ids)
-                outfile_grp.create_dataset('offset_x0', data=obs.offset_x0.to(u.mm).value)
-                outfile_grp.create_dataset('offset_y0', data=obs.offset_y0.to(u.mm).value)
+                # outfile_grp.create_dataset('seeing', data=obs.seeing)
+                # outfile_grp.create_dataset('fiber_ids', data=obs.fiber_ids)
+                # outfile_grp.create_dataset('offset_x0', data=obs.offset_x0.to(u.mm).value)
+                # outfile_grp.create_dataset('offset_y0', data=obs.offset_y0.to(u.mm).value)
 
-                for exp_index in range(obs.spec_file.num_exposures):
-                    exp_grp = outfile_grp.create_group(str(exp_index))
-                    guided_x, guided_y = obs.get_exp_centroids(exp_index)
+                # for exp_index in range(obs.spec_file.num_exposures):
+                #     exp_grp = outfile_grp.create_group(str(exp_index))
+                #     guided_x, guided_y = obs.get_exp_centroids(exp_index)
 
-                    # Calculate centroid offsets for each offset target, relative to its nominal fiber center.
-                    offset = np.sqrt(
-                        (guided_x - obs.offset_x0[:, np.newaxis, np.newaxis])**2 +
-                        (guided_y - obs.offset_y0[:, np.newaxis, np.newaxis])**2) / obs.pointing.platescale
+                #     # Calculate centroid offsets for each offset target, relative to its nominal fiber center.
+                #     offset = np.sqrt(
+                #         (guided_x - obs.offset_x0[:, np.newaxis, np.newaxis])**2 +
+                #         (guided_y - obs.offset_y0[:, np.newaxis, np.newaxis])**2) / obs.pointing.platescale
                     
-                    # Calculate centroid offsets for each offset target, relative to where its fiber center would
-                    # be if it were designed for the same wavelength as the standard stars.
-                    offset_std = np.sqrt(
-                        (guided_x - obs.offset_x0_std[:, np.newaxis, np.newaxis])**2 +
-                        (guided_y - obs.offset_y0_std[:, np.newaxis, np.newaxis])**2) / obs.pointing.platescale
+                #     # Calculate centroid offsets for each offset target, relative to where its fiber center would
+                #     # be if it were designed for the same wavelength as the standard stars.
+                #     offset_std = np.sqrt(
+                #         (guided_x - obs.offset_x0_std[:, np.newaxis, np.newaxis])**2 +
+                #         (guided_y - obs.offset_y0_std[:, np.newaxis, np.newaxis])**2) / obs.pointing.platescale
 
-                    exp_grp.create_dataset('offset', data=offset.to(u.arcsec).value, dtype='f4')
-                    exp_grp.create_dataset('offset_std', data=offset_std.to(u.arcsec).value, dtype='f4')
+                #     exp_grp.create_dataset('offset', data=offset.to(u.arcsec).value, dtype='f4')
+                #     exp_grp.create_dataset('offset_std', data=offset_std.to(u.arcsec).value, dtype='f4')
 
                 # # Loop over offset fibers
-                # for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
-                #     # Save exposure averaged correction
-                #     outfile_grp.create_dataset(str(fiber), data=avg_correction, dtype='f4')
+                for fiber, avg_correction in zip(obs.fiber_ids, avg_corrections):
+                    # Save exposure averaged correction
+                    outfile_grp.create_dataset(str(fiber), data=avg_correction, dtype='f4')
                 wave = obs.wlen_grid
         outfile.create_dataset('wave', data=wave)
         outfile.close()

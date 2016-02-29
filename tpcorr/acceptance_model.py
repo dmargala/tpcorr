@@ -12,8 +12,8 @@ class AcceptanceModel(object):
         Calculate the fiber acceptance fraction versus offset for a specified PSF.
 
         Args:
+            seeing_fwhm: PSF FWHM in arcseconds.
             fiber_diameter: Diameter of the fiber to use with explicit angular units.
-            psf: PSF model to use, assumed to be specified in arcseconds.
             sampling: Sampling to use for the calculation. Higher samplings take longer
                 but give more accurate results.
             max_offset: Maximum centroid offset to calculate, as a ratio of the
